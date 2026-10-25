@@ -43,10 +43,10 @@ Put the most fitting topic first. Invent a new topic only if a large group of �
 
 ## Output format (nothing else in your answer)
 
+Do **not** start the file with a `---` block: GitHub Pages would turn it into a web page and the app could not read it.
+
 ```
----
-book: <slug>
----
+<!-- book: <slug> -->
 
 > पहला वचन, ठीक वैसा जैसा ग्रन्थ में है।
 विषय: सत्संग, ज्ञान

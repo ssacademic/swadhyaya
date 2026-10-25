@@ -430,8 +430,12 @@ async function loadVachans(slug) {
   if (vcache[slug]) return vcache[slug];
   const m = metaOf(slug);
   let list;
-  if (m.vachans) list = parseVachans(await (await fetch('books/' + m.vachans)).text(), slug);
-  else { const bk = await loadBook(slug); list = bk.vachans.map(v => ({ slug, text: v.text, tags: [bk.units[v.ui].title], ui: v.ui })); }
+  if (m.vachans) {
+    const r = await fetch('books/' + m.vachans).catch(() => null);
+    if (r && r.ok) list = parseVachans(await r.text(), slug);
+  }
+  if (!list || !list.length) {   // no vachan file (or it could not be loaded): use the book's numbered vachans
+    const bk = await loadBook(slug); list = bk.vachans.map(v => ({ slug, text: v.text, tags: [bk.units[v.ui].title], ui: v.ui })); }
   return (vcache[slug] = list);
 }
 let THEMES = null;
