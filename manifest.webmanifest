@@ -1,0 +1,12 @@
+{
+  "name": "स्वाध्याय",
+  "short_name": "स्वाध्याय",
+  "description": "सन्तों की वाणी — शान्त, नियमित स्वाध्याय के लिए",
+  "lang": "hi",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f6efe2",
+  "theme_color": "#f6efe2",
+  "icons": [{ "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable" }]
+}
