@@ -1,7 +1,7 @@
 // Offline support: serve from cache instantly, refresh the cache in the background.
 // Bump VERSION when you change app files so old caches are cleared.
-const VERSION = 'svadhyay-v7';
-const SHELL = ['./', 'index.html', 'book.js', 'app.js', 'style.css', 'icon.svg', 'manifest.webmanifest', 'books/books.json', 'books/themes.json'];
+const VERSION = 'svadhyay-v8';
+const SHELL = ['./', 'index.html', 'book.js', 'app.js', 'style.css', 'icon.svg', 'icon-192.png', 'manifest.webmanifest', 'books/books.json', 'books/themes.json'];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)));
