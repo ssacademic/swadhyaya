@@ -77,6 +77,10 @@ Long chapters are automatically divided into sittings of ~12–15 minutes, break
 - **Themes**: वचन are grouped into broad themes shared by all books (`books/themes.json`), each with sub-topics. Edit that file to add or rename themes; topics not listed appear under “अन्य”.
 - **Rounds & reset**: finishing a book or a वचन collection offers the next round (counted: “2 बार पूर्ण”). Book page → “इस ग्रन्थ की प्रगति मिटाएँ…” resets with confirmation; resets, removals and restarts show an **undo** for 5 seconds.
 - **Contents** show a thin progress line under any sitting left midway; the listening bar folds into a small button after 4 s (tap to open).
+- **वचन in the book**: paragraphs that are among the book's chosen वचन carry a faint line in the margin; tapping one shows “❁ वचन” in the action bar.
+- **Highlights**: long-press / select a few words in the book → “हाइलाइट व सहेजें” saves just those words and marks them in the text.
+- **वचन progress is shared**: a वचन read in any collection, or inside a finished sitting of the book, counts as read in every collection that holds it.
+- **Listening extras**: phone media notification and lock-screen/headset controls (play-pause; ⏩/⏪ = next/previous paragraph, or ±15 s for recordings; next/previous track = sitting), and a sleep timer (15 / 30 / 60 min or end of sitting; recordings fade out).
 - **Saved**: tap सहेजें again to remove; saved passages are highlighted in the book; the संग्रह tab has search, newest/oldest, per-book filter, and “read one by one”.
 - **Bottom tabs**: आज · ग्रन्थ · वचन · संग्रह.
 

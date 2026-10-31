@@ -115,7 +115,8 @@ const PHRASES = [
   [/पहले से संग्रह में है/g, 'Already saved'], [/संग्रह में रखा गया/g, 'Saved'], [/प्रतिलिपि बन गई/g, 'Copied'], [/प्रतिलिपि नहीं बन सकी/g, "Couldn't copy"],
   [/प्रति लौट आई/g, 'Restored'], [/यह फ़ाइल पढ़ी नहीं जा सकी/g, "Couldn't read this file"], [/इस ब्राउज़र में सुनने की सुविधा नहीं है/g, "This browser can't read aloud"],
   [/इस अंश की रिकॉर्डिंग नहीं मिली — उपकरण की आवाज़ से सुन रहे हैं/g, 'No recording for this sitting — using the device voice'],
-  [/संग्रह से हटाया/g, 'Removed from saved'], [/यह अंश पढ़ें →/g, 'Read this sitting →'], [/फिर पढ़ें →/g, 'Read again →'], [/वापस लें/g, 'Undo'], [/आरम्भ से/g, 'From start'], [/आरम्भ पर लौटे/g, 'Back to the start'],
+  [/संग्रह से हटाया/g, 'Removed from saved'], [/❁ वचन/g, '❁ Vachan'], [/यह वचनामृत में भी है/g, 'Also in Vachanamrit'], [/हाइलाइट व सहेजें/g, 'Highlight & save'], [/स्लीप टाइमर/g, 'Sleep timer'], [/टाइमर/g, 'Timer'],
+  [/अंश के अन्त तक/g, 'end of sitting'], [/अंश तक/g, 'to end'], [/(\d+) मिनट बाद रुकेगा/g, 'Stops in $1 min'], [/यह अंश पूरा होने पर रुकेगा/g, 'Stops at the end of this sitting'], [/॥ शुभ रात्रि ॥/g, '॥ Good night ॥'], [/यह अंश पढ़ें →/g, 'Read this sitting →'], [/फिर पढ़ें →/g, 'Read again →'], [/वापस लें/g, 'Undo'], [/आरम्भ से/g, 'From start'], [/आरम्भ पर लौटे/g, 'Back to the start'],
   [/(\d+) बार पूर्ण/g, 'completed $1×'], [/पाठ पूर्ण — (\d+) बार। नया पाठ आरम्भ।/g, 'Round complete ($1×). Starting a new round.'], [/पाठ (\d+)/g, 'round $1'],
   [/“अगला” से (\d+)वाँ पाठ आरम्भ होगा।/g, '“Next” starts round $1.'], [/॥ ग्रन्थ पूर्ण ॥ — आपने पूरा ग्रन्थ पढ़ लिया/g, '॥ Book complete ॥ — you have read it all'],
   [/बधाई! क्या एक और पाठ आरम्भ करें\?/g, 'Wonderful! Begin another round?'], [/(\d+)वाँ पाठ आरम्भ करें/g, 'Begin round $1'], [/नया पाठ आरम्भ — प्रगति शून्य से/g, 'New round — progress starts afresh'],
@@ -508,12 +509,29 @@ function findDeck(all, id) {
 }
 const vpos = (id, set) => { const p = store.get('vpos', {}); if (set) { p[id] = { ...(p[id] || {}), ...set }; store.set('vpos', p); } return { i: 0, max: -1, rounds: 0, ...(p[id] || {}) }; };
 const roundTxt = n => n ? ` · ${hiNum(n)} बार पूर्ण` : '';
+// a vachan read anywhere (any collection, or inside the book) counts as read in every collection that holds it
+const vkey = v => { let h = 5381; const t = v.text.replace(/\s+/g, ' ').trim(); for (let k = 0; k < t.length; k++) h = (h * 33 ^ t.charCodeAt(k)) >>> 0; return v.slug + ':' + h.toString(36); };
+let seenCache = null;
+const seenSet = () => seenCache || (seenCache = new Set(store.get('vseen', [])));
+function markSeen(list) {
+  const s = seenSet(); let changed = false;
+  list.forEach(v => { const k = vkey(v); if (!s.has(k)) { s.add(k); changed = true; } });
+  if (changed) store.set('vseen', [...s]);
+}
+const seenIn = items => { const s = seenSet(); return items.filter(v => s.has(vkey(v))).length; };
+// finishing a sitting marks the vachan that appear in it
+async function markVachansOf(slug, u) {
+  try {
+    const t = plain((u.raw || u.title) + '\n' + u.md);
+    markSeen((await loadVachans(slug)).filter(v => t.includes(plain(v.text.split('\n')[0]).slice(0, 30))));
+  } catch { }
+}
 
 async function viewVachanHome() {
   const all = await allVachans(), decks = buildDecks(all);
   let group = null;
   const meta = d => {
-    const p = vpos(d.id), seen = Math.min(d.items.length, p.max + 1);
+    const p = vpos(d.id), seen = seenIn(d.items);
     return { seen, pct: Math.round(seen / d.items.length * 100), txt: `${hiNum(d.items.length)} वचन${seen ? ` · ${seen >= d.items.length ? 'पूर्ण ✓' : hiNum(seen) + ' पढ़े'}` : ''}${roundTxt(p.rounds)}` };
   };
   const row = (d, cls = '', title = d.title, hi = true) => { const m = meta(d);
@@ -553,9 +571,9 @@ async function viewDeck(id) {
   </div>`;
   const draw = () => {
     const v = d.items[i];
-    max = Math.max(max, i); vpos(id, { i, max });
+    max = Math.max(max, i); vpos(id, { i, max }); markSeen([v]);
     const r = vpos(id).rounds; $('#dcount').textContent = `${hiNum(i + 1)} / ${hiNum(d.items.length)}${r ? ` · पाठ ${hiNum(r + 1)}` : ''}`;
-    $('#dbar').style.width = ((max + 1) / d.items.length * 100) + '%';
+    $('#dbar').style.width = (seenIn(d.items) / d.items.length * 100) + '%';
     $('#dcard').innerHTML = `<blockquote class="vcard" lang="hi">${esc(v.text).replace(/\n/g, '<br>')}</blockquote>
       <p class="vsrc center" lang="hi">— ${esc(speakerOf(v.slug))}${v.tags[0] ? ` <span class="muted">· ${esc(v.tags[0])}</span>` : ''}</p>
       ${i === d.items.length - 1 ? `<p class="center muted">॥ इस संग्रह का अन्तिम वचन ॥</p><p class="center small">“अगला” से ${hiNum(vpos(id).rounds + 2)}वाँ पाठ आरम्भ होगा।</p>` : ''}`;
@@ -574,6 +592,7 @@ async function viewDeck(id) {
   // continuous listening: read a vachan, pause, move on
   const listen = () => {
     const run = startTTS(); if (!run) return;
+    media({ title: d.title }, { speaker: speakerOf(d.items[i].slug), title: 'वचनामृत' }, () => go(1), i > 0 ? () => go(-1) : null);
     $('[data-deck-listen]').classList.add('on');
     sayText(d.items[i].text, run, () => setTimeout(() => { if (tts.on && run === tts.n && i < d.items.length - 1) { i++; draw(); listen(); } else stopSpeak(); }, 1400));
   };
@@ -774,7 +793,7 @@ async function viewReader(slug, ui, mode, target) {
     if (el) { el = el.closest('p,li,blockquote,h3') || el; el.scrollIntoView({ block: 'center' }); flash(el); }
     else { const r = pos[nk] || 0; scrollTo(0, r * (document.documentElement.scrollHeight - innerHeight)); }
   });
-  markSaved();
+  markSaved(); markVachans(slug);
 
   // progress bar, position memory, completion
   const bar = $('.rprog i'), rbar = $('.rbar');
@@ -793,7 +812,7 @@ async function viewReader(slug, ui, mode, target) {
   };
   new IntersectionObserver((ents, obs) => {
     if (ents.some(e => e.isIntersecting)) {
-      const was = done(slug).size; markDone(slug, ui); obs.disconnect(); const now = done(slug).size;
+      const was = done(slug).size; markDone(slug, ui); markVachansOf(slug, u); obs.disconnect(); const now = done(slug).size;
       updateLast(Math.round(now / bk.units.length * 100));
       if (now === bk.units.length && was < now) toast('॥ ग्रन्थ पूर्ण ॥ — आपने पूरा ग्रन्थ पढ़ लिया', { label: 'देखें', fn: () => { location.hash = '#/book/' + slug; } });
     }
@@ -811,7 +830,7 @@ async function viewReader(slug, ui, mode, target) {
       return;
     }
     if (e.target.closest('a')) return;
-    if (getSelection().toString().length > 1) return;
+    if (getSelection().toString().trim().length > 1) return;
     const blk = e.target.closest('.body p, .body li, .body blockquote, .part-intro p');
     if (blk && !blk.classList.contains('orn')) showActions(blk, { slug, ui, where: u.title });
   });
@@ -836,12 +855,16 @@ const hiVoices = () => { try { return speechSynthesis.getVoices().filter(v => /^
 const pickVoice = () => { const vs = hiVoices(); return vs.find(v => v.name === settings.voice) || vs[0] || null; };
 const audioEl = new Audio(); audioEl.preload = 'none';
 let keepAlive = null;
-function silentLoop() {           // 1 s of silence, made in memory
+// Chrome only shows the media notification (and routes headset buttons) for media longer than ~5 s,
+// so the keep-alive is 20 s of silence (4 kHz, 8-bit: 80 KB, made in memory), looping.
+function silentLoop() {
   if (keepAlive) return keepAlive;
-  const n = 8000, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, s) => [...s].forEach((c, i) => b[o + i] = c.charCodeAt(0));
+  const n = 80000, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, s) => [...s].forEach((c, i) => b[o + i] = c.charCodeAt(0));
   w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, 8000, true); v.setUint32(28, 8000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+  v.setUint32(24, 4000, true); v.setUint32(28, 4000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
   keepAlive = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' }))); keepAlive.loop = true;
+  keepAlive.onpause = () => { if (tts.on && tts.mode !== 'file' && !tts.paused && !tts.stopping) togglePause(); };
+  keepAlive.onplay = () => { if (tts.on && tts.paused) togglePause(); };
   return keepAlive;
 }
 // user scrolling pauses the follow for a few seconds
@@ -887,16 +910,34 @@ function cycleRate() {
 }
 let miniT;
 function foldSoon() { const b = $('#tts'); b.classList.remove('mini'); clearTimeout(miniT); miniT = setTimeout(() => { if (tts.on && !tts.paused) b.classList.add('mini'); }, 4000); }
+// sleep timer: off → 15 → 30 → 60 min → end of this sitting → off
+const SLEEP = [[0, 'टाइमर'], [15, '15 मि.'], [30, '30 मि.'], [60, '60 मि.'], [-1, 'अंश के अन्त तक']];
+function cycleSleep() {
+  const k = SLEEP.findIndex(x => x[0] === (tts.sleep || 0)), nx = SLEEP[(k + 1) % SLEEP.length][0];
+  tts.sleep = nx; tts.sleepAt = nx > 0 ? Date.now() + nx * 60000 : 0;
+  if (nx) toast(nx > 0 ? `${hiNum(nx)} मिनट बाद रुकेगा` : 'यह अंश पूरा होने पर रुकेगा');
+  ttsBar();
+}
+setInterval(() => {
+  if (tts.on && tts.sleepAt && Date.now() >= tts.sleepAt) { tts.sleep = 0; tts.sleepAt = 0; sleepNow(); }
+  else if (tts.sleepAt && !$('#tts').hidden && !$('#tts').classList.contains('mini')) { const b = $('#tts [data-sl]'); if (b) b.textContent = '⏾ ' + tr(`${hiNum(Math.ceil((tts.sleepAt - Date.now()) / 60000))} मि.`); }
+}, 5000);
+function sleepNow() {
+  // fade a recording out gently; the voice simply stops at the end of its sentence
+  if (tts.mode === 'file') { let v = 1; const f = setInterval(() => { v -= .1; audioEl.volume = Math.max(0, v); if (v <= 0) { clearInterval(f); stopSpeak(); audioEl.volume = 1; } }, 300); }
+  else stopSpeak();
+  toast('॥ शुभ रात्रि ॥');
+}
 function ttsBar() {
   foldSoon();
-  $('#tts').innerHTML = `<button class="mini-btn" data-unfold aria-label="सुनना जारी — नियंत्रण दिखाएँ"><span class="wave"><i></i><i></i><i></i></span></button><button data-tr aria-label="गति">गति: ${rateName()}</button><button data-tp aria-label="${tts.paused ? 'चलाएँ' : 'ठहरें'}">${tts.paused ? '▶ चलाएँ' : '❚❚ ठहरें'}</button><button data-ts>■ रोकें</button>`;
+  $('#tts').innerHTML = `<button class="mini-btn" data-unfold aria-label="सुनना जारी — नियंत्रण दिखाएँ"><span class="wave"><i></i><i></i><i></i></span></button><button data-sl aria-label="स्लीप टाइमर">⏾ ${tts.sleep ? (tts.sleep > 0 ? `${hiNum(Math.max(1, Math.ceil((tts.sleepAt - Date.now()) / 60000)))} मि.` : 'अंश तक') : 'टाइमर'}</button><button data-tr aria-label="गति">गति: ${rateName()}</button><button data-tp aria-label="${tts.paused ? 'चलाएँ' : 'ठहरें'}">${tts.paused ? '▶ चलाएँ' : '❚❚ ठहरें'}</button><button data-ts>■ रोकें</button>`;
   localize($('#tts'));
 }
-$('#tts').onclick = e => { if (e.target.closest('[data-unfold]')) return foldSoon(); foldSoon(); if (e.target.closest('[data-tr]')) return cycleRate(); if (e.target.closest('[data-ts]')) stopSpeak(); if (e.target.closest('[data-tp]')) togglePause(); };
+$('#tts').onclick = e => { if (e.target.closest('[data-unfold]')) return foldSoon(); foldSoon(); if (e.target.closest('[data-sl]')) return cycleSleep(); if (e.target.closest('[data-tr]')) return cycleRate(); if (e.target.closest('[data-ts]')) stopSpeak(); if (e.target.closest('[data-tp]')) togglePause(); };
 function togglePause() {
   if (!tts.on) return;
   if (tts.mode === 'file') { if (audioEl.paused) audioEl.play(); else audioEl.pause(); tts.paused = audioEl.paused; }
-  else if (!tts.paused) { const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el; keepAlive?.pause(); }
+  else if (!tts.paused) { const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el; tts.stopping = true; keepAlive?.pause(); tts.stopping = false; }
   else { const el = tts.el; tts.paused = false; keepAlive?.play().catch(() => { }); speakEl(el, ++tts.n, tts.onEnd); }
   ttsBar(); mediaState();
 }
@@ -912,6 +953,7 @@ function speakEl(el, run, onEnd) {
 function listenUnit(slug, ui, fromEl, auto) {
   const bk = books[slug], u = bk.units[ui], m = bk.meta;
   const nextUnit = () => {
+    if (tts.sleep === -1) { tts.sleep = 0; return sleepNow(); }
     if (ui + 1 < bk.units.length) { tts.carry = { slug }; location.hash = `#/read/${slug}/${ui + 1}`; }
     else { stopSpeak(); toast('॥ इति ॥'); }
   };
@@ -948,15 +990,23 @@ function media(u, m, next, prev) {
     const h = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch { } };
     h('play', () => { if (tts.paused) togglePause(); }); h('pause', () => { if (!tts.paused) togglePause(); });
     h('stop', () => stopSpeak()); h('nexttrack', next); h('previoustrack', prev);
-    h('seekforward', tts.mode === 'file' ? () => { audioEl.currentTime += 15; } : null);
-    h('seekbackward', tts.mode === 'file' ? () => { audioEl.currentTime -= 15; } : null);
+    // headset double/triple press and notification ⏩ ⏪: recording jumps 15 s, the voice moves a paragraph
+    h('seekforward', () => { if (tts.mode === 'file') audioEl.currentTime += 15; else stepPara(1); });
+    h('seekbackward', () => { if (tts.mode === 'file') audioEl.currentTime -= 15; else stepPara(-1); });
   } catch { }
+}
+function stepPara(k) {
+  if (!tts.on || !tts.el) return;
+  const all = readables(), el = all[Math.max(0, all.indexOf(tts.el) + k)];
+  tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = false; keepAlive?.play().catch(() => { });
+  speakEl(el, tts.n, tts.onEnd); ttsBar();
 }
 function mediaState() { try { navigator.mediaSession.playbackState = !tts.on ? 'none' : tts.paused ? 'paused' : 'playing'; } catch { } }
 function stopSpeak(soft) {
+  tts.stopping = true; setTimeout(() => { tts.stopping = false; }, 0);
   tts.on = false; tts.n++; tts.paused = false;
   try { speechSynthesis.cancel(); } catch { }
-  if (!soft) { audioEl.pause(); keepAlive?.pause(); try { tts.lock?.release(); } catch { } tts.lock = null; tts.carry = null; }
+  if (!soft) { tts.sleep = 0; tts.sleepAt = 0; audioEl.pause(); keepAlive?.pause(); try { tts.lock?.release(); } catch { } tts.lock = null; tts.carry = null; }
   else if (tts.mode === 'file') audioEl.pause();
   $$('.speaking-now').forEach(x => x.classList.remove('speaking-now')); tts.el = null;
   const b = $('#tts'); if (b && !soft) b.hidden = true;
@@ -1032,7 +1082,7 @@ function showActions(blk, ctx) {
     while (s && (s.classList.contains('src') || s.classList.contains('bhav'))) { text += '\n' + textOf(s); s = s.nextElementSibling; }
   }
   const a = $('#actions');
-  a.innerHTML = `<button data-a="save">${ICON.bookmark} ${isSaved(text) ? '✓ सहेजा' : 'सहेजें'}</button><button data-a="listen">सुनें</button><button data-a="img">चित्र</button>${navigator.share ? '<button data-a="share">भेजें</button>' : '<button data-a="copy">कॉपी</button>'}<button data-a="x" aria-label="बन्द करें">✕</button>`;
+  a.innerHTML = `${blk.classList.contains('is-vachan') ? '<span class="vtag" title="यह वचनामृत में भी है">❁ वचन</span>' : ''}<button data-a="save">${ICON.bookmark} ${isSaved(text) ? '✓ सहेजा' : 'सहेजें'}</button><button data-a="listen">सुनें</button><button data-a="img">चित्र</button>${navigator.share ? '<button data-a="share">भेजें</button>' : '<button data-a="copy">कॉपी</button>'}<button data-a="x" aria-label="बन्द करें">✕</button>`;
   a.hidden = false; localize(a);
   a.onclick = async e => {
     const b = e.target.closest('button'); if (!b) return;
@@ -1059,10 +1109,68 @@ function saveItem(item) {
 function markSaved() {
   const m = location.hash.match(/^#\/read\/([^/]+)/); if (!m || !$('#chapter')) return;
   const n = x => x.replace(/\s+/g, ' ').trim();
-  const snips = store.get('saved', []).filter(x => x.slug === m[1]).map(x => n(x.text.split('\n')[0]).slice(0, 40)).filter(Boolean);
-  $$('#chapter .body p, #chapter .body li, #chapter .part-intro p').forEach(el => {
-    const t = n(textOf(el)); el.classList.toggle('is-saved', snips.some(q => t.includes(q)));
-  });
+  const mine = store.get('saved', []).filter(x => x.slug === m[1]);
+  $$('#chapter mark.hl').forEach(mk => mk.replaceWith(...mk.childNodes));
+  const snips = mine.filter(x => !x.part).map(x => n(x.text.split('\n')[0]).slice(0, 40)).filter(Boolean);
+  const blocks = $$('#chapter .body p, #chapter .body li, #chapter .body h2, #chapter .part-intro p');
+  blocks.forEach(el => { const t = n(textOf(el)); el.classList.toggle('is-saved', snips.some(q => t.includes(q))); });
+  mine.filter(x => x.part).forEach(x => { const q = n(x.text); blocks.some(el => n(textOf(el)).includes(q.slice(0, 30)) && markRange(el, q)); });
+}
+// long-press / drag over words: offer to save exactly the selected words
+let selT;
+document.addEventListener('selectionchange', () => {
+  clearTimeout(selT);
+  selT = setTimeout(() => {
+    const sel = getSelection(), m = location.hash.match(/^#\/read\/([^/]+)\/(\d+)/);
+    if (!m || !sel.rangeCount || sel.isCollapsed) return;
+    const r = sel.getRangeAt(0), host = r.commonAncestorContainer.nodeType === 1 ? r.commonAncestorContainer : r.commonAncestorContainer.parentElement;
+    if (!host || !host.closest('#chapter .body, #chapter .part-intro')) return;
+    const c = r.cloneContents(); $$('sup', c).forEach(x => x.remove());
+    const text = c.textContent.replace(/[ \t]+/g, ' ').trim();
+    if (text.length < 3) return;
+    const bk = books[m[1]], u = bk && bk.units[+m[2]];
+    showSelection(text, { slug: m[1], ui: +m[2], where: u ? u.title : '' });
+  }, 350);
+});
+function showSelection(text, ctx) {
+  if (selected) selected.classList.remove('sel'); selected = null;
+  const a = $('#actions');
+  a.innerHTML = `<button data-a="hl">${ICON.bookmark} ${isSaved(text) ? '✓ सहेजा' : 'हाइलाइट व सहेजें'}</button>${navigator.share ? '<button data-a="share">भेजें</button>' : '<button data-a="copy">कॉपी</button>'}<button data-a="x" aria-label="बन्द करें">✕</button>`;
+  a.hidden = false; localize(a);
+  a.onclick = async e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const sig = `\n\n— ${speakerOf(ctx.slug)}, ${ctx.where}`;
+    if (b.dataset.a === 'hl') saveItem({ ...ctx, text, part: true });
+    if (b.dataset.a === 'copy') { try { await navigator.clipboard.writeText(text + sig); toast('कॉपी हो गया'); } catch { toast('कॉपी नहीं हो सका'); } }
+    if (b.dataset.a === 'share') { try { await navigator.share({ text: text + sig }); } catch { } }
+    a.hidden = true; try { getSelection().removeAllRanges(); } catch { }
+  };
+}
+// mark the exact saved words inside a paragraph
+function markRange(el, text) {
+  const nodes = [], w = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
+  while (w.nextNode()) if (!w.currentNode.parentElement.closest('sup, mark.hl')) nodes.push(w.currentNode);
+  let flat = '', map = [];
+  nodes.forEach(n => { for (let i = 0; i < n.nodeValue.length; i++) { const ch = /\s/.test(n.nodeValue[i]) ? ' ' : n.nodeValue[i]; if (ch === ' ' && flat.endsWith(' ')) continue; flat += ch; map.push([n, i]); } });
+  const q = text.replace(/\s+/g, ' ').trim(), at = flat.indexOf(q);
+  if (at < 0) return false;
+  const [sn, so] = map[at], [en, eo] = map[at + q.length - 1];
+  const r = document.createRange(); r.setStart(sn, so); r.setEnd(en, eo + 1);
+  const mk = document.createElement('mark'); mk.className = 'hl';
+  try { r.surroundContents(mk); } catch { mk.appendChild(r.extractContents()); r.insertNode(mk); }
+  return true;
+}
+// the book's own chosen vachan get a faint margin line, so readers recognise them while reading
+async function markVachans(slug) {
+  try {
+    const n = x => x.replace(/\s+/g, ' ').trim();
+    const snips = (await loadVachans(slug)).map(v => n(plain(v.text.split('\n')[0])).slice(0, 30)).filter(q => q.length > 8);
+    if (!location.hash.startsWith('#/read/' + slug + '/')) return;
+    $$('#chapter .body p, #chapter .body li, #chapter .body h2').forEach(el => {
+      if (el.classList.contains('q')) return;
+      const t = n(textOf(el)); if (snips.some(q => t.includes(q))) el.classList.add('is-vachan');
+    });
+  } catch { }
 }
 const savedLink = x => ctxLink({ slug: x.slug, ui: x.ui, text: x.text });
 

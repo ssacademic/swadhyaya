@@ -1,6 +1,6 @@
 // Offline support: serve from cache instantly, refresh the cache in the background.
 // Bump VERSION when you change app files so old caches are cleared.
-const VERSION = 'svadhyay-v9';
+const VERSION = 'svadhyay-v12';
 const SHELL = ['./', 'index.html', 'book.js', 'app.js', 'style.css', 'icon.svg', 'icon-192.png', 'manifest.webmanifest', 'books/books.json', 'books/themes.json'];
 
 self.addEventListener('install', e => {
@@ -14,8 +14,9 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   if (e.request.method !== 'GET') return;
   e.respondWith(caches.open(VERSION).then(async cache => {
-    const hit = await cache.match(e.request);
-    const net = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; }).catch(() => hit);
+    const hit = await cache.match(e.request, { ignoreSearch: e.request.mode === 'navigate' });
+    const net = fetch(e.request).then(r => { if (r.ok) cache.put(e.request, r.clone()); return r; })
+      .catch(() => hit || (e.request.mode === 'navigate' ? cache.match('index.html') : Response.error()));
     return hit || net;
   }));
 });
