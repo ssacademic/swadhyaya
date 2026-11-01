@@ -41,6 +41,7 @@ OCR text of a printed book (often with broken lines, page numbers, running heade
 ```
 
 - Text **before the first heading** (title page) is ignored by the app: put the title, author, translator, edition there.
+- If the book has a subject index (विषय-संकेत: topic → piece numbers), keep it as a `#` section at the end; it helps choose वचन topics later.
 - **Do not** write a table of contents. If the book has one, drop it (the app builds its own; a section titled `विषय-सूची` or `अनुक्रमणिका` is skipped anyway).
 - Front matter that deserves reading (प्रकाशकीय, निवेदन, दो शब्द, भूमिका, जीवन-परिचय) gets its own `#` heading.
 - A **part** (आचार खण्ड, उपासना खण्ड…) is a `#` heading followed by at most a few lines of introduction, then `##` chapters.
@@ -52,6 +53,9 @@ OCR text of a printed book (often with broken lines, page numbers, running heade
 
   ## सत्संग
   ```
+- The same works for any label: `शिक्षा 12`, `प्रकरण 3`, `सर्ग 2`, `पाठ 4`, `कथा 7`, `प्रसंग 5`.
+- **Books of many short pieces** (e.g. 325 short teachings): keep each piece as its own `##` under one `#` part, with its label line before it. The app packs them into ~15-minute sittings and lists every piece in the contents.
+- **Conversation books:** each visit/day is a `##`; its parts `### (1)`, `### (2)`; topic headings `####`. Every spoken line starts with the speaker in bold followed by `—` (see table). Narration stays plain.
 - Optional chapter close: `❀ ॥ इति सत्संग ॥ ❀` (shown centred).
 
 ## Conventions inside chapters
@@ -65,6 +69,8 @@ OCR text of a printed book (often with broken lines, page numbers, running heade
 | `— रामचरितमानस, उत्तरकाण्ड, दोहा 112 (ख)[^64]` on the line after the verse | small centred source line |
 | `भावार्थ — …` right after the verse/source | a shaded meaning box |
 | `> **सम्पादकीय निवेदन —** …` | an editor's note box (use sparingly) |
+| `**श्रीरामकृष्ण —** …` or `**श्रीरामकृष्ण** (मास्टर से) **—** …` | a dialogue line; the book's main speaker (books.json `voice`) is shown in the accent colour, others muted |
+| `### (1)` inside a chapter, `#### topic` | sub-sections; long chapters are split into sittings at these |
 | `- item` / `1. item` | lists |
 | `*word*` | italics (rare) |
 
@@ -116,7 +122,8 @@ In the app each `[…]` jumps to the verse in whichever chapter it sits.
   "title": "पुस्तक का नाम",
   "author": "लेखक / संग्रहकर्ता — नाम",
   "speaker": "जिनकी वाणी है (वचनों के नीचे यही नाम छपेगा)",
-  "category": "उपदेश | जीवनी | पद एवं भजन | शास्त्र-टीका | पत्र | कथा",
+  "category": "उपदेश | दृष्टान्त-कथा | संवाद | जीवनी | पद एवं भजन | शास्त्र-टीका | पत्र",
+  "voice": "only for conversation books: the main speaker's name exactly as written in bold, e.g. श्रीरामकृष्ण",
   "about": "एक पंक्ति: इस ग्रन्थ में क्या है।",
   "color": "#8a3b12"
 }

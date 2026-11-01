@@ -20,5 +20,17 @@
     "color": "#2e4a6b",
     "category": "दृष्टान्त-कथा",
     "vachans": "swarg-ka-viman.vachan.md"
+  },
+  {
+    "slug": "ramakrishna-vachanamrit-1",
+    "file": "ramakrishna-vachanamrit-1.md",
+    "title": "श्रीरामकृष्णवचनामृत — प्रथम भाग",
+    "author": "श्री ‘म’ (महेन्द्रनाथ गुप्त) · हिन्दी अनुवाद — पं. सूर्यकान्त त्रिपाठी ‘निराला’",
+    "speaker": "श्रीरामकृष्ण",
+    "voice": "श्रीरामकृष्ण",
+    "about": "दक्षिणेश्वर और कलकत्ते में भक्तों के साथ श्रीरामकृष्ण के वार्तालाप — जैसे हुए, वैसे ही लिखे गए; दृष्टान्तों, गीतों और समाधि-प्रसंगों सहित।",
+    "color": "#2f5d50",
+    "category": "संवाद",
+    "vachans": "ramakrishna-vachanamrit-1.vachan.md"
   }
 ]

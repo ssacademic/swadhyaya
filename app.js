@@ -794,6 +794,8 @@ async function viewReader(slug, ui, mode, target) {
     else { const r = pos[nk] || 0; scrollTo(0, r * (document.documentElement.scrollHeight - innerHeight)); }
   });
   markSaved(); markVachans(slug);
+  // dialogue: the book's main voice (books.json "voice") is set apart from other speakers
+  if (bk.meta.voice) $$('#chapter .body p.sp').forEach(el => { const n = el.querySelector('strong'); if (n && n.textContent.trim().startsWith(bk.meta.voice)) el.classList.add('main'); });
 
   // progress bar, position memory, completion
   const bar = $('.rprog i'), rbar = $('.rbar');

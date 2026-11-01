@@ -6,6 +6,17 @@ Run this **after** the book's Markdown is final (Prompt 1). Paste everything bel
 
 You are choosing the **वचन** (sayings) from a Hindi spiritual book for a reading app. Each वचन is shown alone on a card, as the "आज का वचन" on the home screen, inside topic collections, read aloud, and shared as an image on WhatsApp. A devotee may meet it with no context at all.
 
+## First, see what kind of book it is
+
+| Book type | Where the वचन are | Example |
+|---|---|---|
+| **Numbered sayings** (उपदेश-वचन) | the `**N.**` paragraphs; also self-contained answers in प्रश्न/उत्तर | श्री उड़िया बाबाजी के उपदेश |
+| **Many short teachings/stories** | each teaching's **heading** is usually the saying itself; also the closing moral line | स्वर्ग का विमान |
+| **Conversations / diary** (संवाद) | only inside the main speaker's lines (`**श्रीरामकृष्ण —** …`); take 1–3 sentences that teach on their own, especially parables and similes | श्रीरामकृष्णवचनामृत |
+| **Biography / narrative** | few or none: the saint's quoted words only; it is fine to return 30–60 | — |
+
+If the book has its own subject index (विषय-संकेत, विषयानुक्रमणिका by topic), use it to choose topics.
+
 ## Choose sayings that
 - **stand alone:** understandable without the sentence before; no “इसलिए”, “वह”, “ऊपर कहा गया” pointing outside itself.
 - **carry the saint's own teaching:** not the editor's narration, not biography, not a question.
@@ -13,7 +24,9 @@ You are choosing the **वचन** (sayings) from a Hindi spiritual book for a r
 - **vary:** practical (आचरण, दिनचर्या), devotional (भजन, प्रेम, शरणागति), contemplative (ज्ञान, ध्यान). Avoid near-duplicates; keep the strongest one.
 - **are gentle to meet cold:** skip sayings that only make sense historically, or that a modern reader would find harsh without explanation (they remain in the book with their context).
 
-**How many:** roughly 1 वचन per 400–600 words of teaching text; usually **100–300** for a full book. Quality over quantity.
+**How many:** quality over quantity. Typical: 150–300 for a book of sayings, 250–300 for short-teaching books, **80–150 for conversation books** (most of the text is narration and dialogue), 30–60 for biographies.
+
+**Leave out:** song lyrics and verses quoted from others (unless the book is a book of verses), personal anecdotes ("मैं जब …"), lines addressed to one person about their situation, lines that need the previous sentence (“उसी प्रकार…”, “यही…”), and anything naming a specific person in the conversation.
 
 ## Copy exactly
 Copy each वचन **word-for-word** from the book (same spelling and punctuation) so the app can open it "in context". You may:
@@ -31,12 +44,13 @@ The app groups वचन into **broad themes shared by all books** (file `books/
 |---|---|
 | सन्त और सत्संग | सत्संग · सन्त-महिमा · गुरु |
 | नाम और भजन | नाम-जप · भजन · कीर्तन · प्रार्थना |
-| भक्ति और प्रेम | भक्ति · प्रेम · भक्त · शरणागति · कृपा · विश्वास |
-| वैराग्य और त्याग | वैराग्य · त्याग · संसार · माया · मृत्यु |
-| मन और संयम | मन · संयम · इन्द्रिय · ब्रह्मचर्य · काम-क्रोध · अहंकार |
+| भक्ति और प्रेम | भक्ति · प्रेम · भक्त · कृपा · व्याकुलता · जगन्माता |
+| शरणागति और धैर्य | शरणागति · प्रभु-इच्छा · विश्वास · दुःख-सुख · धैर्य · निर्भयता · कृतज्ञता · संतोष |
+| वैराग्य और त्याग | वैराग्य · त्याग · संसार · माया · धन · मृत्यु · जीवन का मूल्य · कामिनी-कांचन |
+| मन और संयम | मन · संयम · इन्द्रिय · ब्रह्मचर्य · काम-क्रोध · अहंकार · दम्भ |
 | साधना और अभ्यास | साधना · अभ्यास · ध्यान · दिनचर्या · आहार · स्वाध्याय |
-| ज्ञान और तत्त्व | ज्ञान · आत्मा · ईश्वर · तत्त्व-चिन्तन |
-| आचरण और व्यवहार | सद्गुण · सेवा · सत्य · दया · विनय · वाणी · गृहस्थ · समाज · कर्म |
+| ज्ञान और तत्त्व | ज्ञान · आत्मा · ईश्वर · तत्त्व-चिन्तन · ईश्वर-दर्शन · समाधि · अवतार · समन्वय |
+| धर्म और आचरण | आचरण · धर्म · पाप-पुण्य · दान-परोपकार · सेवा · सद्गुण · सत्य · दया · क्षमा · विनय · वाणी · गृहस्थ · समाज · कर्म |
 | लीला, धाम और आनन्द | लीला · धाम · आनन्द · शान्ति |
 
 Put the most fitting topic first. Invent a new topic only if a large group of वचन (20+) truly fits none; then also tell me which theme it belongs to, so `books/themes.json` can be updated. Topics outside the list are shown under "अन्य".

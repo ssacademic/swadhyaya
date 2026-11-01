@@ -25,6 +25,7 @@ function classify(raw, html) {
   if (/^[❀✿✦✧❁◆*•·\s]+$/.test(t) && t.length < 20) return 'orn';
   if (/^[❀॥].*[❀॥]$/.test(t)) return 'iti';
   if (/^\*\*प्रश्न/.test(t)) return 'q';
+  if (/^\*\*[^*]{1,40}\*\*(\s*\([^)]{1,60}\))?\s*\*\*—\*\*/.test(t) || /^\*\*[^*—]{1,40} —\*\*/.test(t)) return 'sp';
   if (/^\*\*उत्तर/.test(t)) return 'a';
   if (/^\*\*\d+\.\*\*/.test(t)) return 'vachan';
   if (/^(भावार्थ|अर्थ)\s*—/.test(t)) return 'bhav';
@@ -171,14 +172,14 @@ function parseBook(src, meta) {
     let start = 0, sum = 0, h3 = null, ctxAtStart = null;
     const pieces = [];
     for (let j = 0; j < blocks.length; j++) {
-      const isHead = /^###\s/.test(blocks[j]);
+      const isHead = /^#{3,4}\s/.test(blocks[j]);
       const good = isHead || /^\*\*(प्रश्न|\d+\.)/.test(blocks[j]);
       const enough = sum >= TARGET_WORDS || (isHead && sum >= TARGET_WORDS * 0.6);
       if (j > start && good && enough && suffix[j] >= 600) {
         pieces.push({ from: start, to: j, words: sum, ctx: ctxAtStart });
         start = j; sum = 0; ctxAtStart = isHead ? null : h3;
       }
-      if (isHead) h3 = plain(blocks[j].replace(/^###\s+/, ''));
+      if (isHead && /^###\s/.test(blocks[j])) h3 = plain(blocks[j].replace(/^###\s+/, ''));
       sum += w[j];
     }
     pieces.push({ from: start, to: blocks.length, words: sum, ctx: ctxAtStart });
