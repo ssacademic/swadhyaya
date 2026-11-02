@@ -12,6 +12,8 @@ To try it on your own computer first: in this folder run `python3 -m http.server
 
 ## Add a book: the pipeline
 
+New chat? Paste [`prompts/HANDOVER.md`](prompts/HANDOVER.md) and attach the zip.
+
 Start with [`prompts/0-guide.md`](prompts/0-guide.md): book types, how the app turns a file into sittings and वचन, and common problems.
 
 1. **Convert**: give the OCR text to an AI chat with [`prompts/1-book-to-markdown.md`](prompts/1-book-to-markdown.md). It returns the `.md` and a `books.json` entry.

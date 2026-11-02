@@ -29,7 +29,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 ## How the app turns the file into reading
 
 **Sittings.** Each `##` (or a standalone `#`) is a chapter. The aim is a sitting of about 12–15 minutes (1,800 words at 140 words a minute):
-- longer chapters (over ~2,600 words) are cut at a `###`/`####` heading, a `**प्रश्न`, or a numbered saying, never mid-paragraph; the parts show as “भाग 1/3” and nest under the chapter in the contents;
+- chapters over ~3,000 words are split into equal parts of about 2,000 words: the app first decides how many parts, then cuts at the sub-heading (best), question or numbered saying (next), or plain paragraph (last resort) nearest each equal share, never inside a verse or list, so there are no tiny leftovers; the parts show as “भाग 1/3” under the chapter;
 - a part with **10 or more chapters under 700 words** is packed instead: neighbours are joined into one sitting (“शिक्षा 1–8”), each keeps its heading, and the contents fold them out;
 - a `#` with only a short introduction becomes a **part** (आचार खण्ड) shown above its first chapter;
 - `विषय-सूची`, `विषयानुक्रमणिका`, `अनुक्रमणिका` are skipped (the app builds its own contents); text before the first heading is ignored.
@@ -62,6 +62,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 ### Choosing वचन well (lessons so far)
 
 - A good वचन stands alone, teaches, and is the saint's own voice, usually 1–4 sentences (60–350 characters).
+- **Complete the thought.** Never stop before the punchline of a simile or parable (“मुझे तो सिर्फ़ दूध चाहिए।” needs “गाय के स्तनों से ही दूध आता है। अवतार गाय के स्तन हैं।”). A parable may run to 900 characters; that is fine. Stop before the next sentence that turns to a person in the room.
 - Similes and parables are the most loved: the elephant that does not turn back, water/जल/पानी, the monkey's and the kitten's young.
 - Leave out: questions, songs quoted from others, personal anecdotes, lines spoken to one person about their case, lines that need the previous sentence (“उसी प्रकार…”, “यही…”), and anything naming people in the conversation.
 - In conversation books most of the text is narration and dialogue: automatic extraction found about 170 candidates in 150,000 words, and about half were good. Expect to choose by hand.
@@ -89,4 +90,5 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 | Hundreds of tiny sittings | short pieces not under one `#` part | put them under a `#` heading |
 | Verse runs into one line | missing two spaces at line ends | add two spaces after every verse line except the last |
 | “प्रसंग” does not open | वचन not word-for-word | copy exactly, or add `अध्याय:` |
+| Sittings change after editing a book | the split moved | the app moves read marks, notes and place to the new sittings automatically (by each sitting's opening words) |
 | Phone still shows old version | offline cache | bump `VERSION` in `sw.js` when changing app files |

@@ -285,3 +285,16 @@ mark.hl { background: color-mix(in srgb, var(--mark) 75%, transparent); color: i
 .body p.sp.main > strong:first-child { color: var(--accent); }
 .body p.sp.main { padding-left: .1em; }
 .body h4 { font: 600 .98em/1.6 var(--serif); color: var(--ink); margin: 2em 0 .8em; padding-bottom: .3em; border-bottom: 1px solid var(--line); }
+
+/* contents: one hierarchy — part label › chapter / sitting (bold) › its parts or pieces (regular, indented) */
+.toc .part { font: 600 .82rem var(--serif); letter-spacing: .06em; color: var(--accent); margin: 26px 0 0; padding: 0 4px 6px; border-bottom: 2px solid var(--accent-soft); }
+.toc > li > a, .toc li.chap > a, .toc li.chap > details > summary { font: 600 1rem/1.5 var(--serif); color: var(--ink); padding: 11px 4px; }
+.toc > li > a.read, .toc li.chap > a.read { color: var(--muted); }
+.toc li.chap > a { border-bottom: 1px dashed var(--line); }
+.toc li.sub a, .toc details li.sub a { font: 400 .93rem/1.5 var(--serif); padding: 8px 4px 8px 1.25em; color: var(--ink); border-bottom: 1px dashed var(--line); }
+.toc li.sub a.read, .toc li.sub a.read span { color: var(--muted); }
+.toc li.sub a small, .toc > li > a small, .toc summary small { font: 400 .8rem var(--ui); color: var(--muted); }
+.toc li.sub:last-child a, .toc li.sub + li:not(.sub) a, .toc details li.sub:last-child a { border-bottom-style: dashed; }
+.toc li.sub + li:not(.sub), .toc li.sub + li.part { border-top: 1px solid var(--line); }
+.toc .sub-open { padding: 8px 4px 12px 1.25em; font: 400 .88rem var(--ui); border-bottom: 1px solid var(--line); }
+.toc details li.sub a span { font-weight: 400; }

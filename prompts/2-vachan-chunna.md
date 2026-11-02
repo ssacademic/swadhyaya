@@ -26,6 +26,8 @@ If the book has its own subject index (विषय-संकेत, विष�
 
 **How many:** quality over quantity. Typical: 150–300 for a book of sayings, 250–300 for short-teaching books, **80–150 for conversation books** (most of the text is narration and dialogue), 30–60 for biographies.
 
+**Complete the thought:** include the whole simile or parable up to its point; never end before the punchline. Stop before a sentence that addresses or names someone present.
+
 **Leave out:** song lyrics and verses quoted from others (unless the book is a book of verses), personal anecdotes ("मैं जब …"), lines addressed to one person about their situation, lines that need the previous sentence (“उसी प्रकार…”, “यही…”), and anything naming a specific person in the conversation.
 
 ## Copy exactly

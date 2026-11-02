@@ -3,7 +3,8 @@
 'use strict';
 const WPM = 140;               // unhurried devotional reading pace
 const TARGET_WORDS = 1800;     // ≈ one 12–15 minute sitting
-const MAX_WORDS = 2600;        // longer chapters are divided into sittings
+const MAX_WORDS = 3000;        // longer chapters are divided into sittings…
+const SPLIT_WORDS = 2000;      // …of about this size each
 const escB = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 /* ---------- Markdown (the subset these books use) ---------- */
@@ -166,23 +167,29 @@ function parseBook(src, meta) {
     const total = wordsIn(c.lines.join(' '));
     const base = { title: c.title, raw: c.items ? null : c.raw, part: c.part, num: c.num, chapter: ci, items: c.items || null };
     if (total <= MAX_WORDS) { units.push({ ...base, intro: c.intro, md: blocks.join('\n\n'), words: total }); return; }
-    const w = blocks.map(b => wordsIn(b));
-    const suffix = []; let acc = 0;
-    for (let j = w.length - 1; j >= 0; j--) { acc += w[j]; suffix[j] = acc; }
-    let start = 0, sum = 0, h3 = null, ctxAtStart = null;
-    const pieces = [];
-    for (let j = 0; j < blocks.length; j++) {
-      const isHead = /^#{3,4}\s/.test(blocks[j]);
-      const good = isHead || /^\*\*(प्रश्न|\d+\.)/.test(blocks[j]);
-      const enough = sum >= TARGET_WORDS || (isHead && sum >= TARGET_WORDS * 0.6);
-      if (j > start && good && enough && suffix[j] >= 600) {
-        pieces.push({ from: start, to: j, words: sum, ctx: ctxAtStart });
-        start = j; sum = 0; ctxAtStart = isHead ? null : h3;
+    // Balanced split: decide the number of parts first (~2,000 words each), then cut at the natural break
+    // (sub-heading > question / numbered saying > plain paragraph) nearest to each equal share.
+    const w = blocks.map(b => wordsIn(b)), k = Math.max(2, Math.round(total / SPLIT_WORDS)), share = total / k;
+    const cum = []; let acc = 0; w.forEach((x, j) => { cum[j] = acc; acc += x; });
+    const kind = j => /^#{3,4}\s/.test(blocks[j]) ? 0 : /^\*\*(प्रश्न|\d+\.)/.test(blocks[j]) ? 1 : /^#{1,2}\s|^\s*[-*]|^\s*\d+[.)]\s|^—|^भावार्थ|^अर्थ —/.test(blocks[j]) || /\S {2}\n/.test(blocks[j - 1] || '') ? 9 : 2;
+    const cuts = [0];
+    for (let m = 1; m < k; m++) {
+      const want = m * share, prev = cum[cuts[cuts.length - 1]];
+      let best = -1, bestScore = Infinity;
+      for (let j = cuts[cuts.length - 1] + 1; j < blocks.length; j++) {
+        const kd = kind(j); if (kd === 9) continue;
+        if (cum[j] - prev < share * 0.55 || total - cum[j] < share * 0.55) continue;
+        const sc = Math.abs(cum[j] - want) / share + [0, .12, .35][kd];
+        if (sc < bestScore) { bestScore = sc; best = j; }
       }
-      if (isHead && /^###\s/.test(blocks[j])) h3 = plain(blocks[j].replace(/^###\s+/, ''));
-      sum += w[j];
+      if (best > 0) cuts.push(best);
     }
-    pieces.push({ from: start, to: blocks.length, words: sum, ctx: ctxAtStart });
+    let h3 = null; const pieces = [];
+    const ctxAt = j => { let h = null; for (let x = 0; x < j; x++) if (/^###\s/.test(blocks[x])) h = plain(blocks[x].replace(/^###\s+/, '')); return h; };
+    cuts.forEach((from, n) => {
+      const to = cuts[n + 1] || blocks.length;
+      pieces.push({ from, to, words: w.slice(from, to).reduce((x, y) => x + y, 0), ctx: n && !/^###\s/.test(blocks[from]) ? ctxAt(from) : null });
+    });
     pieces.forEach((p, n) => units.push({
       ...base, intro: n ? null : c.intro, md: blocks.slice(p.from, p.to).join('\n\n'), words: p.words,
       piece: n + 1, pieces: pieces.length, ctx: p.ctx,

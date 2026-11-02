@@ -48,11 +48,38 @@ async function loadBook(slug) {
   const meta = library.find(b => b.slug === slug);
   if (!meta) throw new Error('पुस्तक नहीं मिली');
   const txt = await (await fetch('books/' + meta.file)).text();
-  const bk = parseBook(txt, meta); store.set('units:' + slug, bk.units.length);
+  const bk = parseBook(txt, meta); await migrateLayout(slug, bk); store.set('units:' + slug, bk.units.length);
   return (books[slug] = bk);
 }
 
 /* ---------- personal state ---------- */
+/* When a book's sittings are re-cut (better splitting, an edited file), progress stored by sitting number is
+   carried over: each old sitting is found in the new layout by its opening words. */
+async function migrateLayout(slug, bk) {
+  const sig = bk.units.map(u => plain(u.md).slice(0, 60));
+  let old = store.get('layout:' + slug, null);
+  const hasData = () => store.get('done:' + slug, []).length || [store.get('pos', {}), store.get('notes', {})].some(o => Object.keys(o).some(k => k.startsWith(slug + ':')));
+  if (!old) {
+    if (hasData()) { try { old = ((await (await fetch('books/layout-legacy.json')).json()) || {})[slug] || null; } catch { } }
+    if (!old) { store.set('layout:' + slug, sig); return; }
+  }
+  if (old.length === sig.length && old.every((x, i) => x === sig[i])) return;
+  const full = bk.units.map(u => plain(u.md)), to = [];
+  old.forEach((x, i) => { const n = full.findIndex(t => t.includes(x)); to[i] = n >= 0 ? n : i ? to[i - 1] : 0; });
+  const od = new Set(store.get('done:' + slug, [])), nd = new Set();
+  bk.units.forEach((_, n) => { const olds = to.map((t, i) => t === n ? i : -1).filter(i => i >= 0); if (olds.length && olds.every(i => od.has(i))) nd.add(n); });
+  store.set('done:' + slug, [...nd]);
+  const moved = obj => { const out = {}; Object.entries(obj).forEach(([k, v]) => { if (!k.startsWith(slug + ':')) { out[k] = v; return; } const n = to[+k.split(':')[1]]; if (n != null) out[slug + ':' + n] = v; }); return out; };
+  const pos = store.get('pos', {}), np = moved(pos);
+  Object.keys(np).forEach(k => { if (k.startsWith(slug + ':')) { const n = +k.split(':')[1], i = to.indexOf(n); if (old[i] !== sig[n] || to.filter(t => t === n).length > 1) np[k] = 0; } });
+  store.set('pos', np);
+  const notes = store.get('notes', {}), nn = {};
+  Object.entries(notes).forEach(([k, v]) => { if (!k.startsWith(slug + ':')) { nn[k] = v; return; } const nk = slug + ':' + to[+k.split(':')[1]]; nn[nk] = nn[nk] ? { ...v, t: nn[nk].t + ' · ' + v.t } : v; });
+  store.set('notes', nn);
+  const last = store.get('last', null); if (last && last.slug === slug && to[last.ui] != null) store.set('last', { ...last, ui: to[last.ui] });
+  store.set('saved', store.get('saved', []).map(x => x.slug === slug && x.ui != null && to[x.ui] != null ? { ...x, ui: to[x.ui] } : x));
+  store.set('layout:' + slug, sig);
+}
 const done = slug => new Set(store.get('done:' + slug, []));
 function markDone(slug, ui) {
   const d = done(slug); if (d.has(ui)) return;
@@ -676,7 +703,7 @@ async function viewBook(slug) {
     if (u.piece === 1) {
       const sibs = bk.units.slice(i, i + u.pieces), nd = sibs.filter((_, k) => d.has(i + k)).length, w = sibs.reduce((a, x) => a + x.words, 0);
       const pf = sibs.reduce((a, _, k) => a + part(i + k), 0) / u.pieces;
-      rows += `<li class="chap"><a href="#/read/${slug}/${i}" class="${nd === u.pieces ? 'read' : ''}"><span lang="hi">${esc(u.title)}</span><small>${nd === u.pieces ? '✓' : nd ? `${hiNum(nd)}/${hiNum(u.pieces)}` : hiNum(mins(w)) + ' मि.'}</small>${fill(pf)}</a></li>`;
+      rows += `<li class="chap"><a href="#/read/${slug}/${i}" class="${nd === u.pieces ? 'read' : ''}"><span lang="hi">${esc(u.title)}</span><small>${nd === u.pieces ? '✓' : nd ? `${hiNum(nd)}/${hiNum(u.pieces)}` : hiNum(mins(w)) + ' मि.'}</small></a></li>`;
     }
     rows += `<li class="sub"><a href="#/read/${slug}/${i}" class="${cls}"><span>भाग ${hiNum(u.piece)}${u.ctx ? ` <small lang="hi">· ${esc(u.ctx)}</small>` : ''}</span><small>${d.has(i) ? '✓' : hiNum(mins(u.words)) + ' मि.'}</small>${fill(part(i))}</a></li>`;
   });
