@@ -30,7 +30,7 @@ This chat has two jobs:
 | Only preparing a book, without app changes | `prompts/0-guide.md`, `prompts/1-book-to-markdown.md`, `prompts/2-vachan-chunna.md`, `books/themes.json`, `books/books.json`, + the book |
 | A bug | a screenshot + what you tapped |
 
-## Current state (1 Nov 2026)
+## Current state (2 Nov 2026)
 
 **Books (3):**
 
@@ -58,6 +58,7 @@ This chat has two jobs:
 | `books/themes.json` | shared वचन themes → topics |
 | `books/<slug>.md` | the book |
 | `books/<slug>.vachan.md` | its वचन |
+| `books/layout-legacy.json` | sitting layouts before the 2 Nov re-split; used once by `migrateLayout` to move old progress (keep it) |
 | `prompts/0-guide.md` | **the full guide**: book types, how the app reads a file, वचन rules, problems |
 | `prompts/1-book-to-markdown.md` | prompt: OCR → app Markdown |
 | `prompts/2-vachan-chunna.md` | prompt: choose and tag वचन |
@@ -70,7 +71,7 @@ This chat has two jobs:
 
 - `#/` **आज**: daily वचन (from all books, by date) · recall card (a saved item ≥3 days old: shows the first words, tap to reveal) · continue card · today's practice ring + 7 dots + weekly streak (a week counts with 3+ reading days; tap for 8-week chart) · shelves (≤4 books: list; more: “पढ़ रहे हैं” + one shelf per category; single-book categories go to “अन्य”)
 - `#/library[/category]`: grid, category/saint chips, search, sort
-- `#/book/<slug>`: cover, progress, rounds (“2 बार पूर्ण”, next round with undo), वचन button, search, contents (parts; chapters with parts nested; packed sittings fold out; thin progress line under half-read sittings), reset progress (confirm + undo)
+- `#/book/<slug>`: cover, progress, rounds (“2 बार पूर्ण”, next round with undo), वचन button, search, contents in one hierarchy: part label (accent) › chapter/sitting (bold) › its parts or pieces (regular, indented); packed sittings fold out; thin progress line only on half-read sittings, reset progress (confirm + undo)
 - `#/read/<slug>/<n>[/a/<anchor>|/f/<text>]`: reader. Tap a paragraph → सहेजें / सुनें / चित्र / भेजें (or कॉपी). Select words → हाइलाइट व सहेजें. Saved = yellow; the book's chosen वचन = faint margin line + “❁ वचन” label. Footnotes in a sheet; cross-refs jump. End: मनन (one-line reflection), next sitting.
 - `#/vachan`: वचनामृत: सभी / बिना क्रम (fixed shuffle) / per book / per theme (fold-out sub-topics; sub-topics <5 hidden)
 - `#/deck/<id>`: one वचन at a time (`all`, `mix`, `b:<slug>`, `th:<theme>`, `t:<topic>`, `saved`); swipe; remembers place; rounds; “आरम्भ से” with undo
@@ -97,10 +98,21 @@ This chat has two jobs:
 1. `pandoc book.docx -t gfm --wrap=none -o books/<slug>.md`
 2. Inspect: headings (`grep -n '^#'`), sizes per chapter, dialogue format, numbered sayings, a subject index. Decide the **type** (see guide).
 3. Parse check: `node -e "const b=require('./book.js'),fs=require('fs');const bk=b.parseBook(fs.readFileSync('books/<slug>.md','utf8'),{});console.log(bk.units.length, bk.words)"`; adjust `book.js` only if a new pattern needs it (keep earlier books' sittings unchanged: saved progress is keyed by sitting number).
-4. वचन: numbered sayings → automatic; short-teaching headings → script; dialogue → `tools/vachan-candidates.py` then **choose by hand**; with a subject index → use it for topics. Tag only with `themes.json` topics; extend the list only when 20+ वचन need a new topic.
+4. वचन: numbered sayings → automatic; short-teaching headings → script; dialogue → `tools/vachan-candidates.py` then **choose by hand**, and make each वचन run to the end of its thought (whole simile/parable, up to ~900 characters), stopping before a sentence that names or addresses someone present; with a subject index → use it for topics. Tag only with `themes.json` topics; extend the list only when 20+ वचन need a new topic.
 5. Add the `books.json` entry (`slug, file, title, author, speaker, [voice], category, about, color, vachans`).
 6. Test: serve locally (`python3 -m http.server 8765`), Playwright on `#/check/<slug>`, a reader page, the book's deck + “प्रसंग”, then `tools/smoke-test.js`. Look at a couple of screenshots.
 7. Bump `VERSION` in `sw.js`, rebuild the preview, zip, and tell me which files to upload.
+
+## Attribution
+
+Every वचन (card, daily वचन, image, copy/share, media notification) is credited to the **book title** (“— श्रीरामकृष्णवचनामृत, प्रथम भाग”), never to a person: saints often quote scriptures or other saints. `speaker` in books.json is for reference only.
+
+## Review lessons (2 Nov)
+
+- Automatic extraction must not cap at a fixed number of sentences: it cut “मुझे तो सिर्फ़ दूध चाहिए।” before its point. Extend forward to the end of the thought.
+- Splitting by a running word count left tiny leftovers and over-split dialogue books; the balanced rule (decide the number of parts, cut nearest each equal share) fixed it.
+- CSS selectors for contents rows must target direct children only (`.toc li.chap > a`), or nested rows inherit bold.
+- After any change to splitting or a book file, check `#/check/<slug>`, the contents of every book (screenshot), and scan वचन files for context-dependent openings (उसी प्रकार, इस प्रकार, किन्तु, यही…).
 
 ## Known issues / decisions
 

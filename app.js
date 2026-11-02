@@ -390,7 +390,9 @@ async function viewHome() {
 
 /* ---------- the library: modular for 1, 5 or 50 books ---------- */
 const metaOf = slug => library.find(b => b.slug === slug) || {};
-const speakerOf = slug => { const m = metaOf(slug); return m.speaker || m.title || ''; };
+// वचन are credited to the book, never to a person: a saint may be quoting a scripture or another saint,
+// and the book is always true and points the reader to the source. (“श्रीरामकृष्णवचनामृत — प्रथम भाग” → “…, प्रथम भाग”)
+const speakerOf = slug => (metaOf(slug).title || '').replace(/\s+—\s+/, ', ');
 const opened = () => store.get('opened', {});
 function bookProgress(b) {
   const d = done(b.slug).size, n = store.get('units:' + b.slug, 0);
@@ -1015,7 +1017,7 @@ function listenUnit(slug, ui, fromEl, auto) {
 function media(u, m, next, prev) {
   if (!('mediaSession' in navigator)) return;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: m.speaker || '', album: m.title, artwork: [{ src: 'icon.svg', sizes: '512x512', type: 'image/svg+xml' }] });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: speakerOf(m.slug), album: 'स्वाध्याय', artwork: [{ src: 'icon.svg', sizes: '512x512', type: 'image/svg+xml' }] });
     const h = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch { } };
     h('play', () => { if (tts.paused) togglePause(); }); h('pause', () => { if (!tts.paused) togglePause(); });
     h('stop', () => stopSpeak()); h('nexttrack', next); h('previoustrack', prev);
@@ -1115,7 +1117,7 @@ function showActions(blk, ctx) {
   a.hidden = false; localize(a);
   a.onclick = async e => {
     const b = e.target.closest('button'); if (!b) return;
-    const who = books[ctx.slug].meta.speaker || books[ctx.slug].meta.title;
+    const who = speakerOf(ctx.slug);
     const sig = `\n\n— ${who}, ${ctx.where}`;
     if (b.dataset.a === 'save') saveItem({ ...ctx, text });
     if (b.dataset.a === 'listen') { const el = blk; hideActions(); return listenUnit(ctx.slug, ctx.ui, el); }

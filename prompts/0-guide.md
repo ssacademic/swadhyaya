@@ -74,7 +74,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 |---|---|
 | `slug`, `file` | short Latin name; the `.md` file name |
 | `title`, `author` | shown on the cover and book page |
-| `speaker` | name printed under its वचन (“— श्री उड़िया बाबाजी”) |
+| `speaker` | the saint or author (for reference only; वचन, images and shares are always credited to the **book title**, since a saint may be quoting a scripture or another saint) |
 | `voice` | conversation books only: the main speaker as written in bold |
 | `category` | shelf on the home page once there are 5+ books (उपदेश, दृष्टान्त-कथा, संवाद, जीवनी, पद एवं भजन, शास्त्र-टीका, पत्र); a category with only one book goes under “अन्य” |
 | `about`, `color` | one line; cover colour (deep, muted) |
