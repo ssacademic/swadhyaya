@@ -622,7 +622,7 @@ async function viewDeck(id) {
   const listen = () => {
     const run = startTTS(); if (!run) return;
     media({ title: d.title }, { speaker: speakerOf(d.items[i].slug), title: 'वचनामृत' }, () => go(1), i > 0 ? () => go(-1) : null);
-    $('[data-deck-listen]').classList.add('on');
+    $('[data-deck-listen]').classList.add('on'); setPos(d.items[i].text.length, 0);
     sayText(d.items[i].text, run, () => setTimeout(() => { if (tts.on && run === tts.n && i < d.items.length - 1) { i++; draw(); listen(); } else stopSpeak(); }, 1400));
   };
   $('#deck').onclick = e => {
@@ -922,7 +922,8 @@ function sayText(text, run, onDone, onPart) {
   parts.forEach((t, i) => {
     const s = new SpeechSynthesisUtterance(t), at = before; before += t.length;
     s.lang = 'hi-IN'; if (voice) s.voice = voice; s.rate = settings.rate || 0.9;
-    if (onPart) s.onstart = () => { if (tts.on && run === tts.n) onPart(at / total); };
+    s.onstart = () => { tts.started = Date.now(); if (onPart && tts.on && run === tts.n) onPart(at / total); };
+    s.onerror = e => dbg('speech error: ' + e.error);
     if (i === parts.length - 1) s.onend = () => { if (tts.on && run === tts.n) onDone(); };
     speechSynthesis.speak(s);
   });
@@ -973,17 +974,34 @@ $('#tts').onclick = e => { if (e.target.closest('[data-unfold]')) return foldSoo
 function togglePause() {
   if (!tts.on) return;
   if (tts.mode === 'file') { if (audioEl.paused) audioEl.play(); else audioEl.pause(); tts.paused = audioEl.paused; }
-  else if (!tts.paused) { const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el; tts.stopping = true; keepAlive?.pause(); tts.stopping = false; }
-  else { const el = tts.el; tts.paused = false; keepAlive?.play().catch(() => { }); speakEl(el, ++tts.n, tts.onEnd); }
+  else if (!tts.paused) {
+    const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el;
+    clearTimeout(tts.idleT); tts.idleT = setTimeout(() => { if (tts.on && tts.paused) { tts.stopping = true; keepAlive?.pause(); tts.stopping = false; } }, 20 * 60000);
+  }
+  else { tts.paused = false; clearTimeout(tts.idleT); resumeSpeech(tts.el); }
   ttsBar(); mediaState();
+}
+// Phones' speech engines can ignore a speak() that comes right after cancel() or after a long pause, so: reset the
+// engine, wait a moment, speak; if nothing has started 2.5 s later, reset and try once more.
+function resumeSpeech(el) {
+  const run = ++tts.n, t0 = Date.now();
+  keepAlive?.play().catch(e => dbg('loop play failed: ' + e.name));
+  try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch { }
+  setTimeout(() => speakEl(el, run, tts.onEnd), 150);
+  setTimeout(() => {
+    if (!tts.on || tts.paused || run !== tts.n || tts.started > t0) return;
+    dbg('speech did not start, retrying');
+    const r2 = ++tts.n; try { speechSynthesis.cancel(); } catch { }
+    setTimeout(() => speakEl(el, r2, tts.onEnd), 300);
+  }, 2500);
 }
 function speakFrom(el) { if (!el) return; const run = startTTS(); if (run) speakEl(el, run); }
 function speakEl(el, run, onEnd) {
   if (!tts.on || run !== tts.n) return;
   if (onEnd) tts.onEnd = onEnd;
   if (!el) return onEnd ? onEnd() : stopSpeak();
-  mark(el); follow(el);
-  sayText(textOf(el), run, () => { const all = readables(); speakEl(all[all.indexOf(el) + 1], run, onEnd); }, f => follow(el, f));
+  mark(el); follow(el); unitPos(el, 0);
+  sayText(textOf(el), run, () => { const all = readables(); speakEl(all[all.indexOf(el) + 1], run, onEnd); }, f => { follow(el, f); unitPos(el, f); });
 }
 // read a whole sitting (file or voice), then carry on into the next one
 function listenUnit(slug, ui, fromEl, auto) {
@@ -1035,8 +1053,19 @@ function media(u, m, next, prev) {
 function stepPara(k) {
   if (!tts.on || !tts.el) return;
   const all = readables(), el = all[Math.max(0, all.indexOf(tts.el) + k)];
-  tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = false; keepAlive?.play().catch(() => { });
-  speakEl(el, tts.n, tts.onEnd); ttsBar();
+  tts.paused = false; clearTimeout(tts.idleT); resumeSpeech(el); ttsBar(); mediaState();
+}
+// the device voice has no real length, so the notification gets an estimate (about 13 characters a second at normal speed)
+function setPos(total, before) {
+  const cps = 13 * (settings.rate || 0.9) / 0.9;
+  try { navigator.mediaSession.setPositionState({ duration: Math.max(1, total / cps), position: Math.min(total, before) / cps, playbackRate: 1 }); } catch { }
+}
+function unitPos(el, f) {
+  if (tts.mode === 'file') return;
+  const lens = readables().map(e => e === el ? -textOf(e).length : textOf(e).length), k = lens.findIndex(x => x < 0);
+  if (k < 0) return;
+  const abs = lens.map(Math.abs), total = abs.reduce((a, b) => a + b, 0);
+  setPos(total, abs.slice(0, k).reduce((a, b) => a + b, 0) + abs[k] * f);
 }
 function mediaState() { try { navigator.mediaSession.playbackState = !tts.on ? 'none' : tts.paused ? 'paused' : 'playing'; } catch { } }
 // listening diagnostics on a phone: open the app with ?debug (e.g. …/index.html?debug#/) — a small box shows
@@ -1057,6 +1086,7 @@ function stopSpeak(soft) {
   tts.stopping = true; setTimeout(() => { tts.stopping = false; }, 0);
   tts.on = false; tts.n++; tts.paused = false;
   try { speechSynthesis.cancel(); } catch { }
+  clearTimeout(tts.idleT);
   if (!soft) { tts.sleep = 0; tts.sleepAt = 0; audioEl.pause(); keepAlive?.pause(); try { tts.lock?.release(); } catch { } tts.lock = null; tts.carry = null; }
   else if (tts.mode === 'file') audioEl.pause();
   $$('.speaking-now').forEach(x => x.classList.remove('speaking-now')); tts.el = null;
