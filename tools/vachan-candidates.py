@@ -47,6 +47,20 @@ for sc,d,w in sorted(best,key=lambda x:-x[0]):
 order={d:i for i,d in enumerate(re.findall(r'^## (.+)$',src,re.M))}
 out.sort(key=lambda x:(order.get(next((k for k in order if plain(k)==x[0]),''),0), src.find(x[1][:20])))
 print(len(out), 'from', len(perd), 'darshans', file=sys.stderr)
+# complete the thought: run each pick forward to the end of its idea (whole simile/parable, ≤ 900 chars),
+# stopping before a sentence that names or addresses someone present, or an aside in brackets
+STOP=r'मास्टर|नरेन्द्र|केशव|मणि|राखाल|विजय|ईशान|महेन्द्र|श्रीश|कप्तान|केदार|बलराम|विद्यासागर|शम्भु|प्राणकृष्ण|सुरेन्द्र|गिरीश|हाजरा|भवनाथ|बाबूराम|योगीन|अधर|त्रैलोक्य|शशधर|हरीश|बंकिम|\(|तुम्हें मैं|तू क्या|तेरी|तुम्हारा|क्यों रे'
+paras=[plain(b) for b in src.split('\n\n')]
+full=[]
+for d,w in out:
+    p=next((x for x in paras if w in x),'')
+    i=p.find(w); new=w
+    if i>=0:
+        for s_ in [x for x in re.split(r'(?<=[।!?])\s+',p[i+len(w):]) if x.strip()]:
+            if re.search(STOP,s_) or len(new)+len(s_)>900: break
+            new+=' '+s_
+    full.append((d,re.sub(r' +',' ',new).strip().rstrip('“”"').strip()))
+out=full
 json.dump(out, open(sys.argv[3],'w'), ensure_ascii=False)
 for i,(d,w) in enumerate(out): print(i, d, '|', w)
 

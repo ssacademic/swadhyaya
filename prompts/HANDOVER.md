@@ -37,8 +37,9 @@ This chat has two jobs:
 | slug | type | sittings | वचन | notes |
 |---|---|---|---|---|
 | `udiya-baba-upadesh` | उपदेश: parts → chapters → प्रश्नोत्तर + numbered sayings | 71 | 937 (auto, all numbered sayings; could be curated to the best ~250) | |
-| `swarg-ka-viman` | दृष्टान्त-कथा: 325 short teachings, headings are sayings | 80 (packed) | 283 (headings minus questions; topics from the book's own विषय-संकेत) | |
+| `swarg-ka-viman` | दृष्टान्त-कथा: 325 short teachings, headings are sayings | 80 (packed) | 279 (headings that are sayings + closing lessons where the heading is only a title; topics from the book's own विषय-संकेत) | |
 | `ramakrishna-vachanamrit-1` | संवाद (dialogue diary) | 96 | 95 (hand-picked; each runs to the end of its thought) | `voice: श्रीरामकृष्ण` |
+| `ramakrishna-vachanamrit-2` | संवाद (dialogue diary) | 77 | 86 (hand-picked from 216 candidates; every one read in full) | `voice: श्रीरामकृष्ण`; converted from .docx with `pandoc -t gfm --wrap=none`, no parser changes needed |
 
 **Themes:** 10 shared themes in `books/themes.json`, each with sub-topics (e.g. भक्ति और प्रेम → भक्ति, प्रेम, भक्त, कृपा, व्याकुलता, जगन्माता).
 
@@ -63,7 +64,8 @@ This chat has two jobs:
 | `prompts/1-book-to-markdown.md` | prompt: OCR → app Markdown |
 | `prompts/2-vachan-chunna.md` | prompt: choose and tag वचन |
 | `tools/make-audio.js` | per-sitting text / MP3 (edge-tts) for background listening |
-| `tools/vachan-candidates.py` | finds वचन candidates in a dialogue book's main speaker's lines (review by hand) |
+| `tools/vachan-candidates.py` | finds वचन candidates in a dialogue book's main speaker's lines and runs each to the end of its thought, stopping before a name or a line to the listener (review by hand) |
+| `tools/check-vachans.py` | **eval for वचन files**: flags labels, titles, list items, too short, dangling, context-dependent, names, not word-for-word, duplicates; exit 1 if any (mark reviewed ones `जाँच: ठीक`) |
 | `tools/smoke-test.js` | 20-step user walkthrough with screenshots (Playwright) |
 | `README.md` | hosting, adding books, features |
 
@@ -99,6 +101,7 @@ This chat has two jobs:
 2. Inspect: headings (`grep -n '^#'`), sizes per chapter, dialogue format, numbered sayings, a subject index. Decide the **type** (see guide).
 3. Parse check: `node -e "const b=require('./book.js'),fs=require('fs');const bk=b.parseBook(fs.readFileSync('books/<slug>.md','utf8'),{});console.log(bk.units.length, bk.words)"`; adjust `book.js` only if a new pattern needs it (keep earlier books' sittings unchanged: saved progress is keyed by sitting number).
 4. वचन: numbered sayings → automatic; short-teaching headings → script; dialogue → `tools/vachan-candidates.py` then **choose by hand**, and make each वचन run to the end of its thought (whole simile/parable, up to ~900 characters), stopping before a sentence that names or addresses someone present; with a subject index → use it for topics. Tag only with `themes.json` topics; extend the list only when 20+ वचन need a new topic.
+4b. **Run `python3 tools/check-vachans.py <slug>` and read every flagged वचन**, plus a random 20 of the rest. Do not ship until it reports 0 flagged.
 5. Add the `books.json` entry (`slug, file, title, author, speaker, [voice], category, about, color, vachans`).
 6. Test: serve locally (`python3 -m http.server 8765`), Playwright on `#/check/<slug>`, a reader page, the book's deck + “प्रसंग”, then `tools/smoke-test.js`. Look at a couple of screenshots.
 7. Bump `VERSION` in `sw.js`, rebuild the preview, zip, and tell me which files to upload.
@@ -113,6 +116,10 @@ Every वचन (card, daily वचन, image, copy/share, media notification) i
 - Splitting by a running word count left tiny leftovers and over-split dialogue books; the balanced rule (decide the number of parts, cut nearest each equal share) fixed it.
 - CSS selectors for contents rows must target direct children only (`.toc li.chap > a`), or nested rows inherit bold.
 - After any change to splitting or a book file, check `#/check/<slug>`, the contents of every book (screenshot), and scan वचन files for context-dependent openings (उसी प्रकार, इस प्रकार, किन्तु, यही…).
+
+## Review lessons (6 Nov)
+
+- स्वर्ग का विमान's वचन were made by a script (every teaching heading = a saying) and shipped without anyone reading them: 24 were titles, story names or list items. Fixed (17 replaced with the teaching's closing lesson, 4 removed, 3 kept after review → 279). Lesson: generated वचन always go through `tools/check-vachans.py` and a human read.
 
 ## Known issues / decisions
 

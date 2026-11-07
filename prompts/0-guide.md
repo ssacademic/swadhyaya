@@ -8,6 +8,7 @@ What three very different books (उड़िया बाबाजी के �
 |---|---|---|---|
 | 1. OCR + edit | AI chat with **prompt 1** | scan / OCR text → `books/<slug>.md` + a `books.json` entry | headings, footnotes, verses (prompt 1 self-check) |
 | 2. Choose वचन | AI chat with **prompt 2** | the finished `.md` → `books/<slug>.vachan.md` | every वचन word-for-word, 1–3 topics |
+| 2b. **Eval** | `python3 tools/check-vachans.py <slug>` | the वचन file → list of flagged वचन | **read every flagged one**; fix, or mark `जाँच: ठीक` if it is fine; must end with 0 flagged |
 | 3. Add | you | upload both files to `books/`, add the entry to `books/books.json` | — |
 | 4. Check | the app | open `…/#/check/<slug>` | fix anything listed under “ध्यान दें” |
 | 5. Read it once | you | open a few sittings on the phone | sitting length, dialogue, verse layout |
@@ -22,7 +23,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 |---|---|---|---|---|
 | **उपदेश / sayings** | parts → chapters → प्रश्नोत्तर + numbered sayings | `#` part, `##` chapter, `###` प्रश्नोत्तर / उपदेश-वचन, `**प्रश्न —**`, `**N.**` | the numbered sayings (150–300) | उड़िया बाबाजी के उपदेश: 938 |
 | **Short teachings / दृष्टान्त** | hundreds of short pieces, each with a saying as its heading | one `#` part; each piece `शिक्षा N` line + `##` heading | the headings themselves, minus questions (250–300) | स्वर्ग का विमान: 283 of 325 |
-| **संवाद / diary** | visits or days, narration + dialogue | `##` per visit, `### (1)`, `#### topic`, `**नाम —** …` for every spoken line; `voice` in books.json | the main speaker's own self-contained sentences, chosen by hand (80–150) | रामकृष्णवचनामृत: 96 |
+| **संवाद / diary** | visits or days, narration + dialogue | `##` per visit, `### (1)`, `#### topic`, `**नाम —** …` for every spoken line; `voice` in books.json | the main speaker's own self-contained sentences, chosen by hand (80–150) | रामकृष्णवचनामृत भाग 1: 95, भाग 2: 86 |
 | **जीवनी / narrative** | chapters of story | `#`/`##` chapters | quoted words only (30–60) | — |
 | **पद / भजन** | many short verses | `##` per pad, lines ending in two spaces | short whole pads or couplets | — |
 
@@ -65,8 +66,10 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 - **Complete the thought.** Never stop before the punchline of a simile or parable (“मुझे तो सिर्फ़ दूध चाहिए।” needs “गाय के स्तनों से ही दूध आता है। अवतार गाय के स्तन हैं।”). A parable may run to 900 characters; that is fine. Stop before the next sentence that turns to a person in the room.
 - Similes and parables are the most loved: the elephant that does not turn back, water/जल/पानी, the monkey's and the kitten's young.
 - Leave out: questions, songs quoted from others, personal anecdotes, lines spoken to one person about their case, lines that need the previous sentence (“उसी प्रकार…”, “यही…”), and anything naming people in the conversation.
-- In conversation books most of the text is narration and dialogue: automatic extraction found about 170 candidates in 150,000 words, and about half were good. Expect to choose by hand.
+- In conversation books most of the text is narration and dialogue: automatic extraction found about 170–220 candidates in 150,000 words, and 40–55% were good. Expect to choose by hand, and **read each chosen one in full**, not just its opening: in भाग 2, reading the full text caught endings that ran into a new story (“कोई मतवाला दुर्गा की मूर्ति देख रहा था।”), into another person's view (“हाज़रा यह भी कहता है…”), a closing question to the listener, and keyword tags that were wrong (“नाम का ही रह जाता है” is not नाम-जप). The checker does not catch these.
 - If the book has a subject index (विषय-संकेत), use it for topics: it is the editor's own judgement.
+- **Headings are not automatically sayings.** In स्वर्ग का विमान many headings were titles (“दान का महत्त्व”), story names (“राजा और विदूषक — ऊपर तलवार और नीचे आग”) or list items (“(1) मूर्ख पापी”). For those, the teaching's own closing lesson is the वचन (“ज्ञानी भक्त तो तैर जाते हैं और ज्ञानी पापी डूब जाते हैं।”).
+- **Never ship वचन that no one has read.** Generate with a script if useful, but run `tools/check-vachans.py` and read what it flags, plus a random sample of 20 of the rest.
 
 ## books.json fields
 
@@ -89,6 +92,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 | A chapter is one huge sitting | sub-sections not marked | add `###` / `####` headings or `**प्रश्न —**` lines |
 | Hundreds of tiny sittings | short pieces not under one `#` part | put them under a `#` heading |
 | Verse runs into one line | missing two spaces at line ends | add two spaces after every verse line except the last |
+| A वचन is just a title or 4–5 words | a heading taken as a saying | run `tools/check-vachans.py`; replace with the teaching's closing lesson |
 | “प्रसंग” does not open | वचन not word-for-word | copy exactly, or add `अध्याय:` |
 | Sittings change after editing a book | the split moved | the app moves read marks, notes and place to the new sittings automatically (by each sitting's opening words) |
 | Phone still shows old version | offline cache | bump `VERSION` in `sw.js` when changing app files |

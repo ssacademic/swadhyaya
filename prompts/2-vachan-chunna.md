@@ -82,7 +82,10 @@ Do **not** start the file with a `---` block: GitHub Pages would turn it into a 
 - One blank line between वचन. Keep them in **book order**.
 
 ## Self-check before answering
+
+0. No titles, labels, story names or list items (“दान का महत्त्व”, “(1) मूर्ख पापी”, “राजा और विदूषक — …”). Every वचन is a full statement with a verb that teaches something.
 1. Every वचन stands alone and is the saint's teaching.
 2. Every वचन is word-for-word (or has an `अध्याय:` line).
 3. Every वचन has 1–3 topics from the list.
 4. No duplicates; a good spread across the whole book, not just the first chapters.
+5. Read each वचन **to its last sentence**: it must not end by starting a new story, quoting another person's view, or asking the listener a question. Check each topic against the meaning, not a word match (“नाम का ही रह जाता है” is not नाम-जप).
