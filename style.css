@@ -118,7 +118,7 @@ mark { background: var(--mark); color: inherit; border-radius: 3px; padding: 0 2
 .body blockquote { margin: 1.2em 0; padding: .4em 1em; border-left: 3px solid var(--accent); font-size: .9em; background: var(--paper); border-radius: 0 8px 8px 0; }
 .body ul, .body ol { padding-left: 1.4em; }
 .body li { margin-bottom: .4em; }
-.fnref a { text-decoration: none; font-size: .62em; padding: 0 .15em; }
+.fnref a { text-decoration: none; font-size: .62em; padding: .6em .45em; margin: -.6em -.3em; } /* bigger finger target, same line height */
 .sel { background: var(--mark) !important; }
 .flash { animation: flash 2.4s ease; }
 @keyframes flash { 0%, 60% { background: var(--mark); } 100% { background: transparent; } }

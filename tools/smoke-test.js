@@ -49,7 +49,7 @@ const S = process.argv[2], U = 'http://localhost:8765/';
   await p.click('[data-reset-yes]'); await p.waitForTimeout(300); log('after reset done:', await p.evaluate(() => done('udiya-baba-upadesh').size));
   await shot('reset-undo'); await p.click('#toast button'); await p.waitForTimeout(300); log('after undo done:', await p.evaluate(() => done('udiya-baba-upadesh').size));
   // complete book → rounds
-  await p.evaluate(() => { store.set('done:udiya-baba-upadesh', [...Array(82).keys()]); }); await p.reload(); await p.waitForSelector('.done-card'); await shot('book-complete');
+  await p.evaluate(() => { store.set('done:udiya-baba-upadesh', [...Array(books['udiya-baba-upadesh'].units.length).keys()]); }); await p.reload(); await p.waitForSelector('.done-card'); await shot('book-complete');
   await p.click('[data-round]'); await p.waitForTimeout(300); log('round:', await p.evaluate(() => [store.get('rounds:udiya-baba-upadesh', 0), done('udiya-baba-upadesh').size]));
   log('ERR', errs); await b.close();
 })();

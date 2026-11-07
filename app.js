@@ -87,13 +87,17 @@ function markDone(slug, ui) {
 }
 const posKey = (slug, ui) => slug + ':' + ui;
 
-/* Reading time: counted in 5s ticks only while the reader is open, visible, and touched in the last minute. */
-let lastAct = Date.now(), onReader = false;
+/* Practice time: counted while the reader/deck is open, visible and touched in the last minute,
+   or while listening (screen off too). Real elapsed time, so a phone slowing timers in the background doesn't under-count. */
+let lastAct = Date.now(), onReader = false, lastTick = Date.now();
 ['scroll', 'pointerdown', 'keydown', 'touchstart'].forEach(e => addEventListener(e, () => { lastAct = Date.now(); }, { passive: true }));
 setInterval(() => {
-  if (!onReader || document.visibilityState !== 'visible' || Date.now() - lastAct > 60000) return;
+  const now = Date.now(), dt = Math.min(65, Math.round((now - lastTick) / 1000)); lastTick = now;
+  const reading = onReader && document.visibilityState === 'visible' && now - lastAct <= 60000;
+  const listening = typeof tts !== 'undefined' && tts.on && !tts.paused;
+  if (!reading && !listening) return;
   const days = store.get('days', {}), k = today(), before = days[k] || 0;
-  days[k] = before + 5; store.set('days', days);
+  days[k] = before + dt; store.set('days', days);
   const goal = settings.goal * 60;
   if (before < goal && days[k] >= goal) toast('॥ आज का नियम पूर्ण हुआ ॥');
 }, 5000);
@@ -125,7 +129,7 @@ const PHRASES = [
   [/आज (\d+) मिनट हुए — (\d+) मिनट और।/g, '$1 min today — $2 more to go.'], [/आज के (\d+) मिनट अभी शेष हैं।/g, "Today's $1 minutes are still ahead."],
   [/इस सप्ताह (\d+) दिन · अब तक कुल (\d+) दिन/g, '$1 days this week · $2 days in all'], [/लगातार (\d+) सप्ताह/g, '$1-week streak'],
   [/· इस सप्ताह (\d+)\/(\d+) दिन/g, '· this week $1/$2 days'], [/संकल्प: प्रतिदिन (\S+) बजे/g, 'Daily at $1'], [/पढ़ने का एक समय तय करें →/g, 'Set a daily reading time →'],
-  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'],
+  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'], [/^मनन · (\d+)$/g, 'Reflections · $1'],
   [/(\d+) अंश · लगभग (\d+) घण्टे का पाठ/g, '$1 sittings · about $2 hours'], [/ग्रन्थ में खोजें — जैसे ‘नाम-जप’/g, 'Search this book (in Hindi)'],
   [/([\d,+]+) स्थान/g, '$1 places'], [/कुछ नहीं मिला/g, 'Nothing found'], [/भाग (\d+) \/ (\d+)/g, 'Part $1 / $2'], [/लगभग (\d+) मिनट/g, 'about $1 min'],
   [/\(आगे\)/g, '(continued)'], [/इस अंश की कौन-सी एक बात आज मन में रखेंगे\?/g, 'Which one thought from this sitting will you carry today?'],
@@ -337,7 +341,7 @@ function practiceHtml() {
     : t > 0 ? `आज ${hiNum(Math.ceil(t / 60))} मिनट हुए — ${hiNum(Math.ceil((goal - t) / 60))} मिनट और।`
       : `आज के ${hiNum(settings.goal)} मिनट अभी शेष हैं।`;
   return `<section class="card practice">
-    <div class="ring" style="--p:${pct}"><span>${hiNum(Math.floor(t / 60))}<small>/${hiNum(settings.goal)}</small></span></div>
+    <div class="ring" style="--p:${pct}"><span>${hiNum(Math.ceil(t / 60))}<small>/${hiNum(settings.goal)}</small></span></div>
     <div class="pmain"><h3>आज का स्वाध्याय</h3><p>${msg}</p>
       <div class="week">${dots}</div>
       <p class="muted small">इस सप्ताह ${hiNum(weekCount)} दिन · अब तक कुल ${hiNum(total)} दिन</p>
@@ -395,8 +399,8 @@ const metaOf = slug => library.find(b => b.slug === slug) || {};
 const speakerOf = slug => (metaOf(slug).title || '').replace(/\s+—\s+/, ', ');
 const opened = () => store.get('opened', {});
 function bookProgress(b) {
-  const d = done(b.slug).size, n = store.get('units:' + b.slug, 0);
-  return { d, n, pct: n ? Math.round(d / n * 100) : 0 };
+  const n = store.get('units:' + b.slug, 0), d = n ? [...done(b.slug)].filter(x => x < n).length : done(b.slug).size;
+  return { d, n, pct: n ? Math.min(100, Math.round(d / n * 100)) : 0 };
 }
 function coverHtml(b, cls = '') {
   return `<div lang="hi" class="cover ${cls}" style="--bc:${b.color || '#8a3b12'}"><span class="om">ॐ</span><b>${esc(b.title)}</b></div>`;
@@ -488,7 +492,8 @@ async function fillDaily() {
   const el = $('#daily'); if (!el) return;
   if (!all.length) { el.hidden = true; return; }
   const day = Math.floor(Date.now() / 864e5 - new Date().getTimezoneOffset() / 1440);
-  const v = all[(day * 7919 + 13) % all.length];
+  const by = {}; all.forEach(x => (by[x.slug] = by[x.slug] || []).push(x));
+  const slugs = Object.keys(by), list = by[slugs[day % slugs.length]], v = list[(Math.floor(day / slugs.length) * 7919 + 13) % list.length];
   el.innerHTML = `<p class="label">आज का वचन</p>
     <blockquote class="vtext" lang="hi">${esc(v.text).replace(/\n/g, '<br>')}</blockquote>
     <p class="vsrc" lang="hi">— ${esc(speakerOf(v.slug))} <span class="muted">${v.tags[0] ? '· ' + esc(v.tags[0]) : ''}</span></p>
@@ -623,7 +628,11 @@ async function viewDeck(id) {
     const run = startTTS(); if (!run) return;
     media({ title: d.title }, { speaker: speakerOf(d.items[i].slug), title: 'वचनामृत' }, () => go(1), i > 0 ? () => go(-1) : null);
     $('[data-deck-listen]').classList.add('on'); setPos(d.items[i].text.length, 0);
-    sayText(d.items[i].text, run, () => setTimeout(() => { if (tts.on && run === tts.n && i < d.items.length - 1) { i++; draw(); listen(); } else stopSpeak(); }, 1400));
+    tts.again = listen; // ▶ after a pause starts this वचन again
+    sayText(d.items[i].text, run, () => setTimeout(() => {
+      if (!tts.on || run !== tts.n) return; // paused or moved on meanwhile: leave the player alone
+      if (i < d.items.length - 1) { i++; draw(); listen(); } else stopSpeak();
+    }, 1400));
   };
   $('#deck').onclick = e => {
     const g = e.target.closest('[data-go]'); if (g) return go(+g.dataset.go);
@@ -683,7 +692,7 @@ async function viewCheck(slug) {
 }
 
 async function viewBook(slug) {
-  const bk = await loadBook(slug), d = done(slug), m = bk.meta;
+  const bk = await loadBook(slug), m = bk.meta, d = new Set([...done(slug)].filter(x => x < bk.units.length));
   const last = store.get('last', null);
   const resume = last && last.slug === slug ? last.ui : 0;
   const pct = Math.round(d.size / bk.units.length * 100);
@@ -931,7 +940,7 @@ function sayText(text, run, onDone, onPart) {
 function startTTS(mode = 'tts') {
   if (mode === 'tts' && !('speechSynthesis' in window)) { toast('इस ब्राउज़र में सुनने की सुविधा नहीं है'); return 0; }
   stopSpeak(true);
-  tts.on = true; tts.mode = mode; tts.paused = false; $('#tts').hidden = false; ttsBar();
+  tts.on = true; tts.mode = mode; tts.paused = false; tts.again = null; $('#tts').hidden = false; ttsBar();
   if (mode === 'tts') silentLoop().play().then(() => dbg('loop started')).catch(e => dbg('loop play failed: ' + e.name));
   try { if (!tts.lock) navigator.wakeLock?.request('screen').then(l => { tts.lock = l; }).catch(() => { }); } catch { }
   return ++tts.n;
@@ -987,12 +996,13 @@ function resumeSpeech(el) {
   const run = ++tts.n, t0 = Date.now();
   keepAlive?.play().catch(e => dbg('loop play failed: ' + e.name));
   try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch { }
-  setTimeout(() => speakEl(el, run, tts.onEnd), 150);
+  const go = r => el ? speakEl(el, r, tts.onEnd) : tts.again ? tts.again() : stopSpeak();
+  setTimeout(() => { if (tts.on && !tts.paused && run === tts.n) go(run); }, 150);
   setTimeout(() => {
     if (!tts.on || tts.paused || run !== tts.n || tts.started > t0) return;
     dbg('speech did not start, retrying');
     const r2 = ++tts.n; try { speechSynthesis.cancel(); } catch { }
-    setTimeout(() => speakEl(el, r2, tts.onEnd), 300);
+    setTimeout(() => { if (tts.on && !tts.paused && r2 === tts.n) go(r2); }, 300);
   }, 2500);
 }
 function speakFrom(el) { if (!el) return; const run = startTTS(); if (run) speakEl(el, run); }
@@ -1011,6 +1021,13 @@ function listenUnit(slug, ui, fromEl, auto) {
     if (ui + 1 < bk.units.length) { tts.carry = { slug }; location.hash = `#/read/${slug}/${ui + 1}`; }
     else { stopSpeak(); toast('॥ इति ॥'); }
   };
+  // heard to the end (not skipped): mark it read, as scrolling to the end would
+  const heard = () => {
+    const was = done(slug).size; markDone(slug, ui); markVachansOf(slug, u);
+    const l = store.get('last', null); if (l && l.slug === slug) store.set('last', { ...l, pct: Math.round(done(slug).size / bk.units.length * 100) });
+    if (done(slug).size === bk.units.length && was < bk.units.length) toast('॥ ग्रन्थ पूर्ण ॥');
+    nextUnit();
+  };
   media(u, m, nextUnit, ui > 0 ? () => { tts.carry = { slug }; location.hash = `#/read/${slug}/${ui - 1}`; } : null);
   if (m.audio) {
     const run = startTTS('file');
@@ -1028,11 +1045,11 @@ function listenUnit(slug, ui, fromEl, auto) {
       mark(all[i]); if (!audioEl.paused) follow(all[i], lens[i] ? c / lens[i] : 0);
       try { navigator.mediaSession?.setPositionState({ duration: audioEl.duration, position: audioEl.currentTime, playbackRate: audioEl.playbackRate }); } catch { }
     };
-    audioEl.onended = () => { if (run === tts.n) nextUnit(); };
-    audioEl.onerror = () => { if (run !== tts.n) return; toast('इस अंश की रिकॉर्डिंग नहीं मिली — उपकरण की आवाज़ से सुन रहे हैं'); const r2 = startTTS(); if (r2) speakEl(fromEl || all[0], r2, nextUnit); };
+    audioEl.onended = () => { if (run === tts.n) heard(); };
+    audioEl.onerror = () => { if (run !== tts.n) return; toast('इस अंश की रिकॉर्डिंग नहीं मिली — उपकरण की आवाज़ से सुन रहे हैं'); const r2 = startTTS(); if (r2) speakEl(fromEl || all[0], r2, heard); };
     audioEl.play().catch(() => { });
   } else {
-    const run = startTTS(); if (run) speakEl(fromEl || readables()[0], run, nextUnit);
+    const run = startTTS(); if (run) speakEl(fromEl || readables()[0], run, heard);
   }
   mediaState();
 }
