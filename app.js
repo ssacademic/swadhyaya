@@ -942,6 +942,7 @@ function startTTS(mode = 'tts') {
   stopSpeak(true);
   tts.on = true; tts.mode = mode; tts.paused = false; tts.again = null; $('#tts').hidden = false; ttsBar();
   if (mode === 'tts') silentLoop().play().then(() => dbg('loop started')).catch(e => dbg('loop play failed: ' + e.name));
+  mediaState();
   try { if (!tts.lock) navigator.wakeLock?.request('screen').then(l => { tts.lock = l; }).catch(() => { }); } catch { }
   return ++tts.n;
 }
@@ -985,7 +986,8 @@ function togglePause() {
   if (tts.mode === 'file') { if (audioEl.paused) audioEl.play(); else audioEl.pause(); tts.paused = audioEl.paused; }
   else if (!tts.paused) {
     const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el;
-    clearTimeout(tts.idleT); tts.idleT = setTimeout(() => { if (tts.on && tts.paused) { tts.stopping = true; keepAlive?.pause(); tts.stopping = false; } }, 20 * 60000);
+    // the notification follows the loop's real state (it ignores playbackState), so the loop must pause for ▶ to show
+    tts.stopping = true; keepAlive?.pause(); tts.stopping = false;
   }
   else { tts.paused = false; clearTimeout(tts.idleT); resumeSpeech(tts.el); }
   ttsBar(); mediaState();
