@@ -25,14 +25,14 @@ This chat has two jobs:
 
 | For | Attach |
 |---|---|
-| App work, or adding a book (recommended) | **`svadhyay.zip`** (the whole repository) |
-| A new book | the book's **`.docx`** (or `.md`) |
-| Only preparing a book, without app changes | `prompts/0-guide.md`, `prompts/1-book-to-markdown.md`, `prompts/2-vachan-chunna.md`, `books/themes.json`, `books/books.json`, + the book |
+| App work, or adding a book with testing (recommended) | **`svadhyay.zip`** (the whole repository, ~1.8 MB) |
+| Only preparing a book (no app changes, smaller chat) | **`svadhyay-book-pack.zip`** (guide, prompts, tools, `book.js`, `books.json`, `themes.json`, one example वचन file) |
+| A new book | the book's **`.docx`** (or `.md`), in addition to one of the above |
 | A bug | a screenshot + what you tapped |
 
-## Current state (2 Nov 2026)
+## Current state (7 Nov 2026, `sw.js` VERSION `svadhyay-v17`)
 
-**Books (3):**
+**Books (4):**
 
 | slug | type | sittings | वचन | notes |
 |---|---|---|---|---|
@@ -120,6 +120,10 @@ Every वचन (card, daily वचन, image, copy/share, media notification) i
 ## Review lessons (6 Nov)
 
 - स्वर्ग का विमान's वचन were made by a script (every teaching heading = a saying) and shipped without anyone reading them: 24 were titles, story names or list items. Fixed (17 replaced with the teaching's closing lesson, 4 removed, 3 kept after review → 279). Lesson: generated वचन always go through `tools/check-vachans.py` and a human read.
+
+## Review lessons (7 Nov)
+
+- For भाग 2 the checker passed everything, yet a full read still caught 4 endings that ran into a new story, another person's view or a remark to someone present, 4 that read oddly cold, and many keyword tags that matched a word but not the meaning. **Read every chosen वचन to its last sentence, and tag by meaning.** (Now in prompt 2's self-check.)
 
 ## Known issues / decisions
 

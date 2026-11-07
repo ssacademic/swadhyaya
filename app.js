@@ -886,16 +886,21 @@ const hiVoices = () => { try { return speechSynthesis.getVoices().filter(v => /^
 const pickVoice = () => { const vs = hiVoices(); return vs.find(v => v.name === settings.voice) || vs[0] || null; };
 const audioEl = new Audio(); audioEl.preload = 'none';
 let keepAlive = null;
-// Chrome only shows the media notification (and routes headset buttons) for media longer than ~5 s,
-// so the keep-alive is 20 s of silence (4 kHz, 8-bit: 80 KB, made in memory), looping.
+// The device voice is not "media" to the phone, so the notification and headset buttons hang on this loop.
+// Chrome on Android only gives a page the notification (and headset buttons) for media that lasts 5 s+ and is
+// actually *audible*: pure digital silence (the old loop) is treated as no sound, so no notification appeared.
+// So: a 40 Hz hum at −60 dB (below human hearing at that pitch and level, but above Chrome's −72 dB "silent"
+// threshold), 16-bit 8 kHz, 10 s (400 whole cycles, so the loop is seamless), made in memory.
 function silentLoop() {
   if (keepAlive) return keepAlive;
-  const n = 80000, b = new Uint8Array(44 + n), v = new DataView(b.buffer), w = (o, s) => [...s].forEach((c, i) => b[o + i] = c.charCodeAt(0));
-  w(0, 'RIFF'); v.setUint32(4, 36 + n, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
-  v.setUint32(24, 4000, true); v.setUint32(28, 4000, true); v.setUint16(32, 1, true); v.setUint16(34, 8, true); w(36, 'data'); v.setUint32(40, n, true); b.fill(128, 44);
+  const rate = 8000, n = rate * 10, b = new Uint8Array(44 + n * 2), v = new DataView(b.buffer), w = (o, s) => [...s].forEach((c, i) => b[o + i] = c.charCodeAt(0));
+  w(0, 'RIFF'); v.setUint32(4, 36 + n * 2, true); w(8, 'WAVEfmt '); v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, 1, true);
+  v.setUint32(24, rate, true); v.setUint32(28, rate * 2, true); v.setUint16(32, 2, true); v.setUint16(34, 16, true); w(36, 'data'); v.setUint32(40, n * 2, true);
+  for (let i = 0; i < n; i++) v.setInt16(44 + i * 2, Math.round(33 * Math.sin(2 * Math.PI * 40 * i / rate)), true);
   keepAlive = new Audio(URL.createObjectURL(new Blob([b], { type: 'audio/wav' }))); keepAlive.loop = true;
-  keepAlive.onpause = () => { if (tts.on && tts.mode !== 'file' && !tts.paused && !tts.stopping) togglePause(); };
-  keepAlive.onplay = () => { if (tts.on && tts.paused) togglePause(); };
+  keepAlive.onpause = () => { dbg('loop paused'); if (tts.on && tts.mode !== 'file' && !tts.paused && !tts.stopping) togglePause(); };
+  keepAlive.onplay = () => { dbg('loop play'); if (tts.on && tts.paused) togglePause(); };
+  keepAlive.onplaying = () => mediaState();
   return keepAlive;
 }
 // user scrolling pauses the follow for a few seconds
@@ -926,7 +931,7 @@ function startTTS(mode = 'tts') {
   if (mode === 'tts' && !('speechSynthesis' in window)) { toast('इस ब्राउज़र में सुनने की सुविधा नहीं है'); return 0; }
   stopSpeak(true);
   tts.on = true; tts.mode = mode; tts.paused = false; $('#tts').hidden = false; ttsBar();
-  if (mode === 'tts') silentLoop().play().catch(() => { });
+  if (mode === 'tts') silentLoop().play().then(() => dbg('loop started')).catch(e => dbg('loop play failed: ' + e.name));
   try { if (!tts.lock) navigator.wakeLock?.request('screen').then(l => { tts.lock = l; }).catch(() => { }); } catch { }
   return ++tts.n;
 }
@@ -1017,8 +1022,9 @@ function listenUnit(slug, ui, fromEl, auto) {
 function media(u, m, next, prev) {
   if (!('mediaSession' in navigator)) return;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: speakerOf(m.slug), album: 'स्वाध्याय', artwork: [{ src: 'icon.svg', sizes: '512x512', type: 'image/svg+xml' }] });
-    const h = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f); } catch { } };
+    // Android's notification can't draw SVG, so PNGs first
+    navigator.mediaSession.metadata = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: m.slug ? speakerOf(m.slug) : (m.speaker || ''), album: 'स्वाध्याय', artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }, { src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] });
+    const h = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f && (d => { dbg('action: ' + a); f(d); })); } catch { } };
     h('play', () => { if (tts.paused) togglePause(); }); h('pause', () => { if (!tts.paused) togglePause(); });
     h('stop', () => stopSpeak()); h('nexttrack', next); h('previoustrack', prev);
     // headset double/triple press and notification ⏩ ⏪: recording jumps 15 s, the voice moves a paragraph
@@ -1033,6 +1039,20 @@ function stepPara(k) {
   speakEl(el, tts.n, tts.onEnd); ttsBar();
 }
 function mediaState() { try { navigator.mediaSession.playbackState = !tts.on ? 'none' : tts.paused ? 'paused' : 'playing'; } catch { } }
+// listening diagnostics on a phone: open the app with ?debug (e.g. …/index.html?debug#/) — a small box shows
+// the keep-alive's state and every notification / headset action that reaches the page
+const DEBUG = /[?&]debug\b/.test(location.search), dbgLog = [];
+function dbg(s) { if (!DEBUG) return; dbgLog.unshift(new Date().toTimeString().slice(0, 8) + ' ' + s); dbgLog.length = Math.min(dbgLog.length, 6); }
+if (DEBUG) {
+  const box = document.createElement('pre');
+  box.style.cssText = 'position:fixed;left:4px;top:4px;z-index:99;margin:0;padding:6px;font:11px/1.3 monospace;background:#000c;color:#0f0;pointer-events:none;max-width:96vw;white-space:pre-wrap';
+  document.body.append(box);
+  setInterval(() => {
+    const k = keepAlive;
+    box.textContent = `ms:${'mediaSession' in navigator} state:${navigator.mediaSession?.playbackState} tts:${tts.on ? tts.mode + (tts.paused ? ' paused' : ' on') : 'off'}\n` +
+      `loop:${k ? (k.paused ? 'PAUSED' : 'playing') + ' t=' + k.currentTime.toFixed(1) + (k.error ? ' ERR ' + k.error.code : '') : 'none'} speaking:${(() => { try { return speechSynthesis.speaking; } catch { return '?'; } })()}\n` + dbgLog.join('\n');
+  }, 1000);
+}
 function stopSpeak(soft) {
   tts.stopping = true; setTimeout(() => { tts.stopping = false; }, 0);
   tts.on = false; tts.n++; tts.paused = false;
