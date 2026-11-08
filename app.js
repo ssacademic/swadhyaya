@@ -129,7 +129,7 @@ const PHRASES = [
   [/आज (\d+) मिनट हुए — (\d+) मिनट और।/g, '$1 min today — $2 more to go.'], [/आज के (\d+) मिनट अभी शेष हैं।/g, "Today's $1 minutes are still ahead."],
   [/इस सप्ताह (\d+) दिन · अब तक कुल (\d+) दिन/g, '$1 days this week · $2 days in all'], [/लगातार (\d+) सप्ताह/g, '$1-week streak'],
   [/· इस सप्ताह (\d+)\/(\d+) दिन/g, '· this week $1/$2 days'], [/संकल्प: प्रतिदिन (\S+) बजे/g, 'Daily at $1'], [/पढ़ने का एक समय तय करें →/g, 'Set a daily reading time →'],
-  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'], [/^मनन · (\d+)$/g, 'Reflections · $1'],
+  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'], [/⏸ रुका है — आगे सुनने के लिए दबाएँ/g, '⏸ Paused — press to continue'], [/^मनन · (\d+)$/g, 'Reflections · $1'],
   [/(\d+) अंश · लगभग (\d+) घण्टे का पाठ/g, '$1 sittings · about $2 hours'], [/ग्रन्थ में खोजें — जैसे ‘नाम-जप’/g, 'Search this book (in Hindi)'],
   [/([\d,+]+) स्थान/g, '$1 places'], [/कुछ नहीं मिला/g, 'Nothing found'], [/भाग (\d+) \/ (\d+)/g, 'Part $1 / $2'], [/लगभग (\d+) मिनट/g, 'about $1 min'],
   [/\(आगे\)/g, '(continued)'], [/इस अंश की कौन-सी एक बात आज मन में रखेंगे\?/g, 'Which one thought from this sitting will you carry today?'],
@@ -986,14 +986,23 @@ function togglePause() {
   if (tts.mode === 'file') { if (audioEl.paused) audioEl.play(); else audioEl.pause(); tts.paused = audioEl.paused; }
   else if (!tts.paused) {
     const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el;
-    // the notification follows the loop's real state (it ignores playbackState), so the loop must pause for ▶ to show
-    tts.stopping = true; keepAlive?.pause(); tts.stopping = false;
+    softPause();
   }
-  else { tts.paused = false; clearTimeout(tts.idleT); resumeSpeech(tts.el); }
+  else { tts.paused = false; clearTimeout(tts.idleT); if (tts.meta) try { navigator.mediaSession.metadata = tts.meta; } catch { } resumeSpeech(tts.el); }
   ttsBar(); mediaState();
 }
 // Phones' speech engines can ignore a speak() that comes right after cancel() or after a long pause, so: reset the
 // engine, wait a moment, speak; if nothing has started 2.5 s later, reset and try once more.
+/* Pausing the device voice. If the loop stops, Android soon drops the lock-screen player and puts the page to
+   sleep, so ▶ from the notification / headset no longer reaches it. So the loop keeps playing (inaudible) for
+   15 minutes: the notification then shows ⏸, which now works as a toggle, and says in words that it is paused.
+   After 15 minutes the loop stops too, to save battery (from then on, open the app to resume). */
+function softPause() {
+  const m = tts.meta;
+  if (m) try { navigator.mediaSession.metadata = new MediaMetadata({ title: tr('⏸ रुका है — आगे सुनने के लिए दबाएँ'), artist: m.title, album: m.album, artwork: m.artwork }); } catch { }
+  clearTimeout(tts.idleT);
+  tts.idleT = setTimeout(() => { if (tts.on && tts.paused) { tts.stopping = true; keepAlive?.pause(); tts.stopping = false; mediaState(); } }, 15 * 60000);
+}
 function resumeSpeech(el) {
   const run = ++tts.n, t0 = Date.now();
   keepAlive?.play().catch(e => dbg('loop play failed: ' + e.name));
@@ -1060,9 +1069,9 @@ function media(u, m, next, prev) {
   if (!('mediaSession' in navigator)) return;
   try {
     // Android's notification can't draw SVG, so PNGs first
-    navigator.mediaSession.metadata = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: m.slug ? speakerOf(m.slug) : (m.speaker || ''), album: 'स्वाध्याय', artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }, { src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] });
+    navigator.mediaSession.metadata = tts.meta = new MediaMetadata({ title: u.title + (u.pieces ? ` · ${u.piece}/${u.pieces}` : ''), artist: m.slug ? speakerOf(m.slug) : (m.speaker || ''), album: 'स्वाध्याय', artwork: [{ src: 'icon-512.png', sizes: '512x512', type: 'image/png' }, { src: 'icon-192.png', sizes: '192x192', type: 'image/png' }] });
     const h = (a, f) => { try { navigator.mediaSession.setActionHandler(a, f && (d => { dbg('action: ' + a); f(d); })); } catch { } };
-    h('play', () => { if (tts.paused) togglePause(); }); h('pause', () => { if (!tts.paused) togglePause(); });
+    h('play', () => { if (tts.paused) togglePause(); }); h('pause', () => togglePause());
     h('stop', () => stopSpeak()); h('nexttrack', next); h('previoustrack', prev);
     // headset double/triple press and notification ⏩ ⏪: recording jumps 15 s, the voice moves a paragraph
     h('seekforward', () => { if (tts.mode === 'file') audioEl.currentTime += 15; else stepPara(1); });
