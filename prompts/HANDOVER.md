@@ -30,9 +30,9 @@ This chat has two jobs:
 | A new book | the book's **`.docx`** (or `.md`), in addition to one of the above |
 | A bug | a screenshot + what you tapped |
 
-## Current state (7 Nov 2026, `sw.js` VERSION `svadhyay-v17`)
+## Current state (8 Nov 2026, `sw.js` VERSION `svadhyay-v24`)
 
-**Books (4):**
+**Books (5):**
 
 | slug | type | sittings | वचन | notes |
 |---|---|---|---|---|
@@ -40,6 +40,7 @@ This chat has two jobs:
 | `swarg-ka-viman` | दृष्टान्त-कथा: 325 short teachings, headings are sayings | 80 (packed) | 279 (headings that are sayings + closing lessons where the heading is only a title; topics from the book's own विषय-संकेत) | |
 | `ramakrishna-vachanamrit-1` | संवाद (dialogue diary) | 96 | 95 (hand-picked; each runs to the end of its thought) | `voice: श्रीरामकृष्ण` |
 | `ramakrishna-vachanamrit-2` | संवाद (dialogue diary) | 77 | 86 (hand-picked from 216 candidates; every one read in full) | `voice: श्रीरामकृष्ण`; converted from .docx with `pandoc -t gfm --wrap=none`, no parser changes needed |
+| `vaikunth-dham-ke-amrit-phal` | उपदेश: 482 numbered sayings (from slates) + 26 प्रश्नोत्तर | 15 | 259 (hand-picked from all 482 + Q&A, each read in full; left out: पद, quotations, भावार्थ, anecdotes, words to one person, food/medicine remedies, repeats) | Awadhi-flavoured speech kept by the editor; converted with pandoc, then `## वचनामृत/प्रश्नोत्तर/शब्द-सूची` raised to `#` |
 
 **Themes:** 10 shared themes in `books/themes.json`, each with sub-topics (e.g. भक्ति और प्रेम → भक्ति, प्रेम, भक्त, कृपा, व्याकुलता, जगन्माता).
 
@@ -81,7 +82,9 @@ This chat has two jobs:
 - `#/find/<slug>/<text>[/<chapter>]`: opens where a वचन is in the book
 - `#/check/<slug>`: quality report for a new book
 
-**Listening:** device Hindi voice (Web Speech) sentence-chunked (~220 chars) with follow-scroll; or recorded MP3s if `books.json` has `audio`. Player bar: ⏾ sleep timer (15/30/60/end of sitting), speed (5 steps), pause, stop; folds to a small button after 4 s. Media Session: notification + headset (play/pause; ⏩⏪ = paragraph or ±15 s; next/prev = sitting). A 20 s silent loop keeps the session alive (Chrome ignores media <5 s). Continues into the next sitting.
+**Listening:** pausing the device voice keeps an inaudible 40 Hz loop playing for 15 min (Android drops the session and sleeps the page if nothing plays), so the notification shows ⏸ and that button toggles; its title says “⏸ रुका है”. A sitting heard to the end is marked read; listening counts toward the daily goal. Debug box: open with `?debug`.
+
+Older notes: device Hindi voice (Web Speech) sentence-chunked (~220 chars) with follow-scroll; or recorded MP3s if `books.json` has `audio`. Player bar: ⏾ sleep timer (15/30/60/end of sitting), speed (5 steps), pause, stop; folds to a small button after 4 s. Media Session: notification + headset (play/pause; ⏩⏪ = paragraph or ±15 s; next/prev = sitting). A 20 s silent loop keeps the session alive (Chrome ignores media <5 s). Continues into the next sitting.
 
 **Settings (⚙):** language हिन्दी/English (interface only; content marked `lang="hi"` is never translated; dictionaries `EXACT`/`PHRASES` in `app.js`), colours, typeface (Tiro / Noto), 5 sizes, daily goal, reminder time → Google Calendar / .ics, speed, voice, backup/restore.
 
@@ -124,6 +127,12 @@ Every वचन (card, daily वचन, image, copy/share, media notification) i
 ## Review lessons (7 Nov)
 
 - For भाग 2 the checker passed everything, yet a full read still caught 4 endings that ran into a new story, another person's view or a remark to someone present, 4 that read oddly cold, and many keyword tags that matched a word but not the meaning. **Read every chosen वचन to its last sentence, and tag by meaning.** (Now in prompt 2's self-check.)
+
+## Review lessons (8 Nov)
+
+- A book that is *all* sayings still needs choosing: of 482, about half were anecdotes, quoted पद, words to one devotee, remedies or near-repeats (the same “मन ड्राइवर है” saying appears 5 times). Pick the clearest instance once.
+- `check-vachans.py` now knows Awadhi/subjunctive verb endings (मिले, करै, पावै, जाय), which it used to flag as titles.
+- Contents now show “वचन 74–121” for parts made of numbered sayings (label only, sittings unchanged); `**प्रार्थना N —**` is styled like a question.
 
 ## Known issues / decisions
 

@@ -25,7 +25,7 @@ function classify(raw, html) {
   const t = raw.trim();
   if (/^[❀✿✦✧❁◆*•·\s]+$/.test(t) && t.length < 20) return 'orn';
   if (/^[❀॥].*[❀॥]$/.test(t)) return 'iti';
-  if (/^\*\*प्रश्न/.test(t)) return 'q';
+  if (/^\*\*प्रश्न/.test(t) || /^\*\*प्रार्थना \d+ —/.test(t)) return 'q';
   if (/^\*\*[^*]{1,40}\*\*(\s*\([^)]{1,60}\))?\s*\*\*—\*\*/.test(t) || /^\*\*[^*—]{1,40} —\*\*/.test(t)) return 'sp';
   if (/^\*\*उत्तर/.test(t)) return 'a';
   if (/^\*\*\d+\.\*\*/.test(t)) return 'vachan';
@@ -79,6 +79,11 @@ const wordsIn = s => (s.match(/\S+/g) || []).length;
 
 /* ---------- Book parsing: split into chapters and reading sittings ---------- */
 const LABEL = /^(अध्याय|शिक्षा|प्रकरण|सर्ग|पाठ|कथा|प्रसंग)\s+\S+$/;  // a number line printed just before a heading
+// "वचन 97–145" for a part made of numbered sayings (label only; sittings are not affected)
+function sayingRange(bl) {
+  const n = bl.map(b => (b.match(/^\*\*(\d+)\.\*\*/) || [])[1]).filter(Boolean);
+  return n.length >= 2 ? `वचन ${n[0]}–${n[n.length - 1]}` : null;
+}
 const SKIP = /^(विषय-?\s?सूची|विषयानुक्रमणिका|अनुक्रमणिका|अनुक्रम|contents|table of contents)$/i;
 
 function parseBook(src, meta) {
@@ -192,7 +197,7 @@ function parseBook(src, meta) {
     });
     pieces.forEach((p, n) => units.push({
       ...base, intro: n ? null : c.intro, md: blocks.slice(p.from, p.to).join('\n\n'), words: p.words,
-      piece: n + 1, pieces: pieces.length, ctx: p.ctx,
+      piece: n + 1, pieces: pieces.length, ctx: p.ctx, range: sayingRange(blocks.slice(p.from, p.to)),
     }));
   });
 

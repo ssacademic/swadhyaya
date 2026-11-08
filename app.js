@@ -338,7 +338,7 @@ function practiceHtml() {
   const total = Object.values(days).filter(s => s > 0).length;
   const pct = Math.min(100, Math.round(t / goal * 100));
   const msg = t >= goal ? 'आज का नियम पूर्ण। जितना और पढ़ें, प्रसाद है।'
-    : t > 0 ? `आज ${hiNum(Math.ceil(t / 60))} मिनट हुए — ${hiNum(Math.ceil((goal - t) / 60))} मिनट और।`
+    : t > 0 ? `आज ${hiNum(Math.ceil(t / 60))} मिनट हुए — ${hiNum(Math.max(1, Math.round(goal / 60) - Math.ceil(t / 60)))} मिनट और।`
       : `आज के ${hiNum(settings.goal)} मिनट अभी शेष हैं।`;
   return `<section class="card practice">
     <div class="ring" style="--p:${pct}"><span>${hiNum(Math.ceil(t / 60))}<small>/${hiNum(settings.goal)}</small></span></div>
@@ -716,7 +716,7 @@ async function viewBook(slug) {
       const pf = sibs.reduce((a, _, k) => a + part(i + k), 0) / u.pieces;
       rows += `<li class="chap"><a href="#/read/${slug}/${i}" class="${nd === u.pieces ? 'read' : ''}"><span lang="hi">${esc(u.title)}</span><small>${nd === u.pieces ? '✓' : nd ? `${hiNum(nd)}/${hiNum(u.pieces)}` : hiNum(mins(w)) + ' मि.'}</small></a></li>`;
     }
-    rows += `<li class="sub"><a href="#/read/${slug}/${i}" class="${cls}"><span>भाग ${hiNum(u.piece)}${u.ctx ? ` <small lang="hi">· ${esc(u.ctx)}</small>` : ''}</span><small>${d.has(i) ? '✓' : hiNum(mins(u.words)) + ' मि.'}</small>${fill(part(i))}</a></li>`;
+    rows += `<li class="sub"><a href="#/read/${slug}/${i}" class="${cls}"><span>भाग ${hiNum(u.piece)}${u.ctx || u.range ? ` <small lang="hi">· ${esc(u.ctx || u.range)}</small>` : ''}</span><small>${d.has(i) ? '✓' : hiNum(mins(u.words)) + ' मि.'}</small>${fill(part(i))}</a></li>`;
   });
   app.innerHTML = `${topbar()}
   <div class="wrap">
@@ -791,7 +791,7 @@ async function viewReader(slug, ui, mode, target) {
     <header class="chead">
       ${u.part || u.num ? `<p class="kicker" lang="hi">${esc([u.part, u.num].filter(Boolean).join(' · '))}</p>` : ''}
       <h1 lang="hi">${u.raw && /\[\^/.test(u.raw) ? inline(u.raw) : esc(u.title)}</h1>
-      <p class="muted small">${u.pieces ? `भाग ${hiNum(u.piece)} / ${hiNum(u.pieces)} · ` : ''}लगभग ${hiNum(mins(u.words))} मिनट</p>
+      <p class="muted small">${u.pieces ? `भाग ${hiNum(u.piece)} / ${hiNum(u.pieces)} · ` : ''}${u.range ? `<span lang="hi">${u.range}</span> · ` : ''}लगभग ${hiNum(mins(u.words))} मिनट</p>
     </header>
     ${u.ctx ? `<p class="ctx"><span lang="hi">${esc(u.ctx)}</span> <span>(आगे)</span></p>` : ''}
     <div class="body" lang="hi">${renderMd(u.md)}</div>
