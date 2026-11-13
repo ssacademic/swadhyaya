@@ -113,7 +113,7 @@ const EXACT = {
   'सुप्रभात': 'Good morning', 'शुभ दिन': 'Good day', 'शुभ सन्ध्या': 'Good evening', 'शुभ रात्रि': 'Good night', 'ब्राह्म मुहूर्त': 'Brahma muhurta',
   'आरम्भ करें': 'Begin', 'सेटिंग': 'Settings', 'प्रतिलिपि': 'Copy', 'हटाएँ': 'Remove', 'ठीक है': 'Done', 'बन्द करें': 'Close', 'पुराना काग़ज़': 'Old paper',
   'सभी वचन': 'All vachan', 'बिना क्रम': 'Shuffled', 'सभी सन्त': 'All saints', 'हाल में खोले': 'Recent', 'अ–ज्ञ': 'A–Z', 'सप्ताह-क्रम': 'Weekly streak',
-  'अन्य कैलेंडर': 'Other calendar', 'देखें': 'View', '✓ सहेजा': '✓ Saved', 'कॉपी': 'Copy', 'वापस': 'Back', 'नए पहले': 'Newest', 'पुराने पहले': 'Oldest', 'सभी ग्रन्थ': 'All books', 'यह': 'now', 'गति': 'Speed', 'सुनकर देखें': 'Test voice', 'उपकरण की आवाज़': 'Device voice', 'खोजें': 'Search', 'सहेजा हुआ': 'Saved',
+  'अन्य कैलेंडर': 'Other calendar', 'देखें': 'View', '✓ सहेजा': '✓ Saved', 'कॉपी': 'Copy', 'वापस': 'Back', 'नए पहले': 'Newest', 'पुराने पहले': 'Oldest', 'सभी ग्रन्थ': 'All books', 'और ग्रन्थ': 'More books', 'यह': 'now', 'गति': 'Speed', 'सुनकर देखें': 'Test voice', 'उपकरण की आवाज़': 'Device voice', 'खोजें': 'Search', 'सहेजा हुआ': 'Saved',
 };
 const PHRASES = [
   [/पढ़ने की सुविधा/g, 'Reading settings'], [/अक्षर का आकार/g, 'Text size'], [/दैनिक नियम/g, 'Daily practice'], [/(\d+) मि\./g, '$1 min'],
@@ -411,7 +411,8 @@ function tileHtml(b) {
     <small class="muted">${p.d ? `${hiNum(p.pct)}% पढ़ा` : `<span lang="hi">${esc(b.speaker || b.author || '')}</span>`}</small>
     ${p.d ? `<span class="bar"><i style="width:${p.pct}%"></i></span>` : ''}</a>`;
 }
-const catOf = b => { const c = b.category || 'अन्य'; return library.length > 4 && library.filter(x => (x.category || 'अन्य') === c).length < 2 ? 'अन्य' : c; };
+// every book keeps its own category (library chips, filters); only the home shelves group the small ones
+const catOf = b => b.category || 'अन्य';
 const categories = () => { const c = [...new Set(library.map(catOf))]; return [...c.filter(x => x !== 'अन्य'), ...c.filter(x => x === 'अन्य')]; };
 function shelvesHtml() {
   // up to 4 books: a calm list; more: “पढ़ रहे हैं” + one horizontal shelf per category
@@ -426,7 +427,17 @@ function shelvesHtml() {
   const row = (title, list, more) => `<div class="shelf-row"><h2 class="shelf-h"><span ${title === 'पढ़ रहे हैं' ? '' : 'lang="hi"'}>${esc(title)}</span>${more ? ` <a href="${more}" class="more">सब देखें →</a>` : ''}</h2>
     <div class="hscroll">${list.map(tileHtml).join('')}</div></div>`;
   return (reading.length ? row('पढ़ रहे हैं', reading) : '')
-    + categories().map(c => { const l = library.filter(b => catOf(b) === c); return row(c, l.slice(0, 10), `#/library/${encodeURIComponent(c)}`); }).join('');
+    + homeShelves().map(([t, l, more]) => row(t, l.slice(0, 10), more)).join('');
+}
+// a category with 2+ books gets its own shelf; one-book categories share a shelf named after them
+// (“दृष्टान्त-कथा · शास्त्र”), and only past three of them is it called “और ग्रन्थ”
+function homeShelves() {
+  const cs = categories(), of = c => library.filter(b => catOf(b) === c);
+  const big = cs.filter(c => of(c).length >= 2), small = cs.filter(c => of(c).length < 2);
+  const out = big.map(c => [c, of(c), `#/library/${encodeURIComponent(c)}`]);
+  if (small.length === 1) out.push([small[0], of(small[0]), `#/library/${encodeURIComponent(small[0])}`]);
+  else if (small.length) out.push([small.length <= 3 ? small.join(' · ') : 'और ग्रन्थ', small.flatMap(of), '#/library']);
+  return out;
 }
 async function viewLibrary(cat) {
   await loadLibrary();
