@@ -176,7 +176,17 @@ function parseBook(src, meta) {
     // (sub-heading > question / numbered saying > plain paragraph) nearest to each equal share.
     const w = blocks.map(b => wordsIn(b)), k = Math.max(2, Math.round(total / SPLIT_WORDS)), share = total / k;
     const cum = []; let acc = 0; w.forEach((x, j) => { cum[j] = acc; acc += x; });
-    const kind = j => /^#{3,4}\s/.test(blocks[j]) ? 0 : /^\*\*(प्रश्न|\d+\.)/.test(blocks[j]) ? 1 : /^#{1,2}\s|^\s*[-*]|^\s*\d+[.)]\s|^—|^भावार्थ|^अर्थ —/.test(blocks[j]) || /\S {2}\n/.test(blocks[j - 1] || '') ? 9 : 2;
+    // śloka books (groups of numbered ślokas, each followed by its translation): cut only where a new group
+    // begins, so ślokas and their translation always stay in one sitting
+    const isVerse = x => /\S {2}\n/.test(x || '') && /॥\s*\d+\s*॥/.test(x || '');
+    const sloka = blocks.filter(x => !/\S {2}\n/.test(x) && /॥\s*\d+(\s*[-–]\s*\d+)?\s*॥\s*$/.test(x)).length >= 8; // translation paragraphs ending ॥ N॥
+    // without the Sanskrit (translation only): prefer the first translation after a note, else any translation
+    const isTr = x => !/\S {2}\n/.test(x || '') && /॥\s*[\d½]+(\s*[-–‑]\s*[\d½]+)?\s*॥\s*$/.test(x || '');
+    const hasVerse = blocks.some(isVerse);
+    const kind = j => /^#{3,4}\s/.test(blocks[j]) ? 0
+      : sloka ? (hasVerse ? (isVerse(blocks[j]) && !isVerse(blocks[j - 1]) ? 1 : 9)
+                          : isTr(blocks[j]) ? (isTr(blocks[j - 1]) ? 2 : 1) : 9)
+      : /^\*\*(प्रश्न|\d+\.)/.test(blocks[j]) ? 1 : /^#{1,2}\s|^\s*[-*]|^\s*\d+[.)]\s|^—|^भावार्थ|^अर्थ —/.test(blocks[j]) || /\S {2}\n/.test(blocks[j - 1] || '') ? 9 : 2;
     const cuts = [0];
     for (let m = 1; m < k; m++) {
       const want = m * share, prev = cum[cuts[cuts.length - 1]];
@@ -232,8 +242,10 @@ function parseVachans(src, slug) {
 }
 
 /* plain text for speech: no footnote markers, markup or ornaments */
+// verse numbers (॥ 40॥, ॥ 37-38 ॥, ॥ 1½॥) are for the eye; spoken they are noise, so they become a pause
+const unNumber = t => t.replace(/\s*॥\s*[\d½]+(\s*[-–‑]\s*[\d½]+)?\s*॥/g, '।').replace(/([।?!])\s*।/g, '$1');
 function speechText(md) {
   return md.split(/\n\s*\n/).map(b => plain(b.replace(/^#{1,6}\s+/, '').replace(/ {2,}\n/g, '\n')))
-    .filter(t => t && !/^[❀✿✦✧❁◆*•·\s॥]+$/.test(t)).join('\n\n');
+    .map(unNumber).filter(t => t && !/^[❀✿✦✧❁◆*•·\s॥।]+$/.test(t)).join('\n\n');
 }
-if (typeof module !== 'undefined') module.exports = { inline, parseBook, parseVachans, renderMd, plain, wordsIn, speechText, WPM };
+if (typeof module !== 'undefined') module.exports = { inline, parseBook, parseVachans, renderMd, plain, wordsIn, speechText, unNumber, WPM };

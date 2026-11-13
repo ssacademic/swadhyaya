@@ -8,7 +8,7 @@ const S = process.argv[2], U = 'http://localhost:8765/';
   let n = 0; const shot = async name => { await p.waitForTimeout(250); await p.screenshot({ path: `${S}/${String(++n).padStart(2, '0')}-${name}.png` }); };
   const log = (...a) => console.log(String(n).padStart(2, '0'), ...a);
   await p.goto(U); await p.waitForSelector('#daily blockquote'); await shot('home-first');
-  await p.click('.book'); await p.waitForSelector('.toc'); await shot('book');
+  await p.click('a[href^="#/book/"]'); await p.waitForSelector('.toc'); await shot('book');
   await p.click('.bookhead .btn.primary'); await p.waitForSelector('.body p'); log('opened', await p.evaluate(() => location.hash));
   await p.mouse.wheel(0, 900); await p.waitForTimeout(400); await shot('reader-scrolled');
   await p.click('.rbar a.ib'); await p.waitForSelector('.toc'); await p.waitForTimeout(200);

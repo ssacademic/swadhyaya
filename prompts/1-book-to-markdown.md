@@ -113,6 +113,7 @@ In the app each `[…]` jumps to the verse in whichever chapter it sits.
 7. Nothing summarised or omitted; any change of meaning-bearing words is footnoted.
 8. Add a short `# इस संस्करण के विषय में` section at the start listing: the base edition used, what was standardised, what was added (footnotes, भावार्थ, sources), and a request to readers to report errors.
 9. Footnote numbers are continuous across the whole file.
+10. No footnote definition ends with a label (`शिक्षा 141`, `अध्याय 3`): labels stay on their own line just before their heading, and every label number is present, in order.
 
 ## Also return this books.json entry
 ```json

@@ -24,6 +24,7 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 | **उपदेश / sayings** | parts → chapters → प्रश्नोत्तर + numbered sayings | `#` part, `##` chapter, `###` प्रश्नोत्तर / उपदेश-वचन, `**प्रश्न —**`, `**N.**` | the numbered sayings (150–300) | उड़िया बाबाजी के उपदेश: 938 |
 | **Short teachings / दृष्टान्त** | hundreds of short pieces, each with a saying as its heading | one `#` part; each piece `शिक्षा N` line + `##` heading | the headings themselves, minus questions (250–300) | स्वर्ग का विमान: 283 of 325 |
 | **संवाद / diary** | visits or days, narration + dialogue | `##` per visit, `### (1)`, `#### topic`, `**नाम —** …` for every spoken line; `voice` in books.json | the main speaker's own self-contained sentences, chosen by hand (80–150) | रामकृष्णवचनामृत भाग 1: 95, भाग 2: 86 |
+| **शास्त्र / श्लोक + अनुवाद** | chapters of śloka groups; each group (lines ending in two spaces, `॥ N॥`) is followed by one translation paragraph per śloka ending `॥ N॥`, plus commentary (`**विशेष —**`, `**विमर्श —**`) | `#` खण्ड, `अध्याय N` label + `##` chapter; keep each group and its translations together | only the translation paragraphs (they end in `॥ N॥`; commentary doesn't): drop story narration, objections the text refutes, and lines leaning on the previous śloka; strip a leading address (“हे परशुराम!”) (100–150) | त्रिपुरारहस्य |
 | **जीवनी / narrative** | chapters of story | `#`/`##` chapters | quoted words only (30–60) | — |
 | **पद / भजन** | many short verses | `##` per pad, lines ending in two spaces | short whole pads or couplets | — |
 
@@ -84,6 +85,10 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 | `vachans` | the वचन file name |
 | `audio` | optional: folder of `001.mp3…` recordings (see README) |
 
+**Removing the Sanskrit** (done for त्रिपुरारहस्य, for ease of reading and listening): delete the book's own numbered śloka groups, its Sanskrit colophons (॥ इति … ॥) and its verses quoted in the भूमिका; keep quotations from other texts that have a source line; keep the translation's ॥ N॥ (shown, not spoken).
+
+**Śloka books split differently.** In a chapter with 8+ translation paragraphs ending `॥ N॥`, a sitting may only begin where a new śloka group begins, so ślokas and their translation never land in different sittings. Other books are unaffected (a chapter of numbered दोहे without such translations keeps the old rule).
+
 ## Common problems
 
 | Symptom | Cause | Fix |
@@ -96,3 +101,5 @@ The type decides the structure (prompt 1) and where the वचन come from (pro
 | “प्रसंग” does not open | वचन not word-for-word | copy exactly, or add `अध्याय:` |
 | Sittings change after editing a book | the split moved | the app moves read marks, notes and place to the new sittings automatically (by each sitting's opening words) |
 | Phone still shows old version | offline cache | bump `VERSION` in `sw.js` when changing app files |
+
+| A chapter shows no number, its footnote ends in “शिक्षा 141” | the label line got joined to a footnote during conversion | `python3 tools/fix-footnote-labels.py books/<slug>.md` moves it back and lists missing or out-of-order labels |

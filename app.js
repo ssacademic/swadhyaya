@@ -129,7 +129,7 @@ const PHRASES = [
   [/आज (\d+) मिनट हुए — (\d+) मिनट और।/g, '$1 min today — $2 more to go.'], [/आज के (\d+) मिनट अभी शेष हैं।/g, "Today's $1 minutes are still ahead."],
   [/इस सप्ताह (\d+) दिन · अब तक कुल (\d+) दिन/g, '$1 days this week · $2 days in all'], [/लगातार (\d+) सप्ताह/g, '$1-week streak'],
   [/· इस सप्ताह (\d+)\/(\d+) दिन/g, '· this week $1/$2 days'], [/संकल्प: प्रतिदिन (\S+) बजे/g, 'Daily at $1'], [/पढ़ने का एक समय तय करें →/g, 'Set a daily reading time →'],
-  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'], [/⏸ रुका है — आगे सुनने के लिए दबाएँ/g, '⏸ Paused — press to continue'], [/^मनन · (\d+)$/g, 'Reflections · $1'],
+  [/(\d+) अंश पढ़े/g, '$1 sittings read'], [/पढ़ रहे हैं/g, 'Reading now'], [/सब देखें →/g, 'See all →'], [/(\d+)% पढ़ा/g, '$1% read'], [/स्क्रीन चालू करें — वहीं से आगे सुनें/g, 'Turn the screen on to continue'], [/Chrome स्क्रीन बंद होते ही.*/g, 'Chrome stops the voice when the screen turns off; it plays while the screen is on. To listen with the screen off, open the app in Firefox.'], [/⏸ रुका है — आगे सुनने के लिए दबाएँ/g, '⏸ Paused — press to continue'], [/^मनन · (\d+)$/g, 'Reflections · $1'],
   [/(\d+) अंश · लगभग (\d+) घण्टे का पाठ/g, '$1 sittings · about $2 hours'], [/ग्रन्थ में खोजें — जैसे ‘नाम-जप’/g, 'Search this book (in Hindi)'],
   [/([\d,+]+) स्थान/g, '$1 places'], [/कुछ नहीं मिला/g, 'Nothing found'], [/भाग (\d+) \/ (\d+)/g, 'Part $1 / $2'], [/लगभग (\d+) मिनट/g, 'about $1 min'],
   [/\(आगे\)/g, '(continued)'], [/इस अंश की कौन-सी एक बात आज मन में रखेंगे\?/g, 'Which one thought from this sitting will you carry today?'],
@@ -923,6 +923,7 @@ function mark(el) { if (tts.el === el) return; $$('.speaking-now').forEach(x => 
 
 function sayText(text, run, onDone, onPart) {
   // sentences joined into chunks of ~220 characters: fewer gaps between utterances, still short enough for every phone
+  text = unNumber(text); // verse numbers are not read aloud
   const sents = text.replace(/[—–]/g, ', ').replace(/([।॥?!\n])\s*/g, '$1\u0001').split('\u0001').map(s => s.trim()).filter(Boolean);
   const parts = sents.reduce((a, x) => { if (a.length && a[a.length - 1].length + x.length < 220) a[a.length - 1] += ' ' + x; else a.push(x); return a; }, []);
   if (!parts.length) return onDone();
@@ -943,7 +944,7 @@ function startTTS(mode = 'tts') {
   tts.on = true; tts.mode = mode; tts.paused = false; tts.again = null; $('#tts').hidden = false; ttsBar();
   if (mode === 'tts') silentLoop().play().then(() => dbg('loop started')).catch(e => dbg('loop play failed: ' + e.name));
   mediaState();
-  try { if (!tts.lock) navigator.wakeLock?.request('screen').then(l => { tts.lock = l; }).catch(() => { }); } catch { }
+  try { if (!tts.lock) navigator.wakeLock?.request('screen').then(l => { tts.lock = l; l.onrelease = () => { tts.lock = null; }; }).catch(() => { }); } catch { }
   return ++tts.n;
 }
 const RATES = [[0.75, 'धीमी'], [0.9, 'सहज'], [1, 'सामान्य'], [1.15, 'तेज़'], [1.3, 'अति तेज़']];
@@ -985,7 +986,7 @@ function togglePause() {
   if (!tts.on) return;
   if (tts.mode === 'file') { if (audioEl.paused) audioEl.play(); else audioEl.pause(); tts.paused = audioEl.paused; }
   else if (!tts.paused) {
-    const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el;
+    tts.held = false; const el = tts.el; tts.n++; try { speechSynthesis.cancel(); } catch { } tts.paused = true; tts.el = el;
     softPause();
   }
   else { tts.paused = false; clearTimeout(tts.idleT); if (tts.meta) try { navigator.mediaSession.metadata = tts.meta; } catch { } resumeSpeech(tts.el); }
@@ -1003,10 +1004,34 @@ function softPause() {
   clearTimeout(tts.idleT);
   tts.idleT = setTimeout(() => { if (tts.on && tts.paused) { tts.stopping = true; keepAlive?.pause(); tts.stopping = false; mediaState(); } }, 15 * 60000);
 }
+/* Chrome on Android stops the device voice whenever the page is hidden (screen off, another app) and will not
+   start it again until the page is visible: a browser rule (TtsController "stop speaking when hidden"), not ours.
+   Firefox keeps speaking. So: if speech has stopped ~1.5 s after the page was hidden, hold the place, say so in the
+   notification, and carry on from the same paragraph as soon as the screen is back on. */
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') {
+    if (!tts.on || tts.mode === 'file' || tts.paused) return;
+    const run = tts.n;
+    setTimeout(() => {
+      let speaking = true; try { speaking = speechSynthesis.speaking; } catch { }
+      if (document.visibilityState !== 'hidden' || !tts.on || tts.paused || run !== tts.n || speaking) return;
+      tts.held = true; tts.n++; try { speechSynthesis.cancel(); } catch { }
+      dbg('browser stopped speech (page hidden) — holding');
+      const m = tts.meta;
+      if (m) try { navigator.mediaSession.metadata = new MediaMetadata({ title: tr('स्क्रीन चालू करें — वहीं से आगे सुनें'), artist: m.title, album: m.album, artwork: m.artwork }); } catch { }
+    }, 1500);
+  } else {
+    if (tts.on && !tts.lock) try { navigator.wakeLock?.request('screen').then(l => { tts.lock = l; l.onrelease = () => { tts.lock = null; }; }).catch(() => { }); } catch { }
+    if (!tts.held) return;
+    tts.held = false;
+    if (!store.get('heldTip', false)) { store.set('heldTip', true); toast(tr('Chrome स्क्रीन बंद होते ही आवाज़ रोक देता है; स्क्रीन चालू रहने तक सुनाई देगा। स्क्रीन बंद करके सुनना हो तो Firefox में खोलें।'), { label: 'ठीक', fn: () => { } }); }
+    if (tts.on && !tts.paused) { if (tts.meta) try { navigator.mediaSession.metadata = tts.meta; } catch { } resumeSpeech(tts.el); }
+  }
+});
 function resumeSpeech(el) {
   const run = ++tts.n, t0 = Date.now();
   keepAlive?.play().catch(e => dbg('loop play failed: ' + e.name));
-  try { speechSynthesis.cancel(); speechSynthesis.resume(); } catch { }
+  try { speechSynthesis.cancel(); } catch { }
   const go = r => el ? speakEl(el, r, tts.onEnd) : tts.again ? tts.again() : stopSpeak();
   setTimeout(() => { if (tts.on && !tts.paused && run === tts.n) go(run); }, 150);
   setTimeout(() => {
@@ -1114,7 +1139,7 @@ function stopSpeak(soft) {
   tts.stopping = true; setTimeout(() => { tts.stopping = false; }, 0);
   tts.on = false; tts.n++; tts.paused = false;
   try { speechSynthesis.cancel(); } catch { }
-  clearTimeout(tts.idleT);
+  clearTimeout(tts.idleT); tts.held = false;
   if (!soft) { tts.sleep = 0; tts.sleepAt = 0; audioEl.pause(); keepAlive?.pause(); try { tts.lock?.release(); } catch { } tts.lock = null; tts.carry = null; }
   else if (tts.mode === 'file') audioEl.pause();
   $$('.speaking-now').forEach(x => x.classList.remove('speaking-now')); tts.el = null;

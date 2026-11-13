@@ -30,9 +30,9 @@ This chat has two jobs:
 | A new book | the book's **`.docx`** (or `.md`), in addition to one of the above |
 | A bug | a screenshot + what you tapped |
 
-## Current state (8 Nov 2026, `sw.js` VERSION `svadhyay-v24`)
+## Current state (8 Nov 2026, `sw.js` VERSION `svadhyay-v28`)
 
-**Books (5):**
+**Books (6):**
 
 | slug | type | sittings | वचन | notes |
 |---|---|---|---|---|
@@ -41,6 +41,7 @@ This chat has two jobs:
 | `ramakrishna-vachanamrit-1` | संवाद (dialogue diary) | 96 | 95 (hand-picked; each runs to the end of its thought) | `voice: श्रीरामकृष्ण` |
 | `ramakrishna-vachanamrit-2` | संवाद (dialogue diary) | 77 | 86 (hand-picked from 216 candidates; every one read in full) | `voice: श्रीरामकृष्ण`; converted from .docx with `pandoc -t gfm --wrap=none`, no parser changes needed |
 | `vaikunth-dham-ke-amrit-phal` | उपदेश: 482 numbered sayings (from slates) + 26 प्रश्नोत्तर | 15 | 259 (hand-picked from all 482 + Q&A, each read in full; left out: पद, quotations, भावार्थ, anecdotes, words to one person, food/medicine remedies, repeats) | Awadhi-flavoured speech kept by the editor; converted with pandoc, then `## वचनामृत/प्रश्नोत्तर/शब्द-सूची` raised to `#` |
+| `tripura-rahasya` | शास्त्र: 22 chapters of Hindi translation (॥ N॥) + विशेष notes; **its own Sanskrit removed on request** (299 śloka groups, chapter colophons, भूमिका quotes, the all-Sanskrit आत्मपरिचयः); quotations from other texts (गीता, तुलसी, देव्यथर्वशीर्ष …) kept; original with Sanskrit not in the repo | 42 | 140 (from the 1,192 translation paragraphs: 833 left after dropping narration were all read; kept the self-contained teachings of दत्तात्रेय, हेमलेखा, जनक, the Devi, हेमाङ्गद) | `category: शास्त्र`; ~9 h |
 
 **Themes:** 10 shared themes in `books/themes.json`, each with sub-topics (e.g. भक्ति और प्रेम → भक्ति, प्रेम, भक्त, कृपा, व्याकुलता, जगन्माता).
 
@@ -67,6 +68,7 @@ This chat has two jobs:
 | `tools/make-audio.js` | per-sitting text / MP3 (edge-tts) for background listening |
 | `tools/vachan-candidates.py` | finds वचन candidates in a dialogue book's main speaker's lines and runs each to the end of its thought, stopping before a name or a line to the listener (review by hand) |
 | `tools/check-vachans.py` | **eval for वचन files**: flags labels, titles, list items, too short, dangling, context-dependent, names, not word-for-word, duplicates; exit 1 if any (mark reviewed ones `जाँच: ठीक`) |
+| `tools/fix-footnote-labels.py` | finds label lines (`शिक्षा N`…) joined onto a footnote, moves them back, and reports missing/out-of-order labels; `--dry` to only report |
 | `tools/smoke-test.js` | 20-step user walkthrough with screenshots (Playwright) |
 | `README.md` | hosting, adding books, features |
 
@@ -82,7 +84,7 @@ This chat has two jobs:
 - `#/find/<slug>/<text>[/<chapter>]`: opens where a वचन is in the book
 - `#/check/<slug>`: quality report for a new book
 
-**Listening:** pausing the device voice keeps an inaudible 40 Hz loop playing for 15 min (Android drops the session and sleeps the page if nothing plays), so the notification shows ⏸ and that button toggles; its title says “⏸ रुका है”. A sitting heard to the end is marked read; listening counts toward the daily goal. Debug box: open with `?debug`.
+**Listening:** pausing the device voice keeps an inaudible 40 Hz loop playing for 15 min (Android drops the session and sleeps the page if nothing plays), so the notification shows ⏸ and that button toggles; its title says “⏸ रुका है”. A sitting heard to the end is marked read; listening counts toward the daily goal. Debug box: open with `?debug`. **Chrome on Android stops the device voice whenever the page is hidden (screen off) and won't start it while hidden** (Chromium TtsController `stop_speaking_when_hidden_`); Firefox keeps speaking. The app holds the place, shows “स्क्रीन चालू करें — वहीं से आगे सुनें” in the notification and continues when the screen is back. Real screen-off listening on Chrome needs recordings (`tools/make-audio.js`).
 
 Older notes: device Hindi voice (Web Speech) sentence-chunked (~220 chars) with follow-scroll; or recorded MP3s if `books.json` has `audio`. Player bar: ⏾ sleep timer (15/30/60/end of sitting), speed (5 steps), pause, stop; folds to a small button after 4 s. Media Session: notification + headset (play/pause; ⏩⏪ = paragraph or ±15 s; next/prev = sitting). A 20 s silent loop keeps the session alive (Chrome ignores media <5 s). Continues into the next sitting.
 
@@ -102,6 +104,7 @@ Older notes: device Hindi voice (Web Speech) sentence-chunked (~220 chars) with 
 
 1. `pandoc book.docx -t gfm --wrap=none -o books/<slug>.md`
 2. Inspect: headings (`grep -n '^#'`), sizes per chapter, dialogue format, numbered sayings, a subject index. Decide the **type** (see guide).
+2b. `python3 tools/fix-footnote-labels.py books/<slug>.md --dry` (labels and footnotes intact).
 3. Parse check: `node -e "const b=require('./book.js'),fs=require('fs');const bk=b.parseBook(fs.readFileSync('books/<slug>.md','utf8'),{});console.log(bk.units.length, bk.words)"`; adjust `book.js` only if a new pattern needs it (keep earlier books' sittings unchanged: saved progress is keyed by sitting number).
 4. वचन: numbered sayings → automatic; short-teaching headings → script; dialogue → `tools/vachan-candidates.py` then **choose by hand**, and make each वचन run to the end of its thought (whole simile/parable, up to ~900 characters), stopping before a sentence that names or addresses someone present; with a subject index → use it for topics. Tag only with `themes.json` topics; extend the list only when 20+ वचन need a new topic.
 4b. **Run `python3 tools/check-vachans.py <slug>` and read every flagged वचन**, plus a random 20 of the rest. Do not ship until it reports 0 flagged.
@@ -133,6 +136,15 @@ Every वचन (card, daily वचन, image, copy/share, media notification) i
 - A book that is *all* sayings still needs choosing: of 482, about half were anecdotes, quoted पद, words to one devotee, remedies or near-repeats (the same “मन ड्राइवर है” saying appears 5 times). Pick the clearest instance once.
 - `check-vachans.py` now knows Awadhi/subjunctive verb endings (मिले, करै, पावै, जाय), which it used to flag as titles.
 - Contents now show “वचन 74–121” for parts made of numbered sayings (label only, sittings unchanged); `**प्रार्थना N —**` is styled like a question.
+
+## Review lessons (13 Nov)
+
+- Footnotes in all books are complete (every reference has its definition, and the app shows each in full). But in स्वर्ग का विमान, 8 teaching labels (`शिक्षा 141`, 161, 197, 216, 254, 272, 307, 317) had been joined onto the end of footnote definitions, so those teachings had no number and 8 packed sittings had a sentence instead of “शिक्षा a–b” as their title. Found in the old chat, fixed here with its `tools/fix-footnote-labels.py`. A check that a footnote *exists and opens* does not catch this; check that no definition ends in a label, and that label numbers are complete and in order.
+- A śloka book needs its own split rule: a cut between two translation paragraphs leaves ślokas in one sitting and part of their meaning in the next. `book.js` now cuts only at the start of a śloka group in chapters with 8+ translation paragraphs ending `॥ N॥`. The first attempt (gate: 8+ numbered verses) also caught उड़िया बाबा's chapter of दोहे and would have moved its sittings — always diff every book's sittings after touching the splitter.
+- In a translated scripture, a वचन is a sentence of the translation, never the commentator's explanation; strip the verse number and a leading address. The checker caught a “फिर …” opening; a scan for वह/यह openings caught one more it missed.
+- Removing a book's Sanskrit: its own ślokas are the verse blocks numbered ॥ N॥; quotations from other texts carry a source line (— गीता 12.2) — keep those. All footnote definitions sit at the end of the file, after the last section, so never cut “everything after a heading”; drop only the definitions of footnotes that lived inside removed ślokas, then check refs = definitions.
+- Without ślokas, a translation-only chapter is cut at the first translation paragraph after a note (विशेष), else at any translation paragraph. Verse numbers (॥ 40॥) are no longer spoken (`unNumber` in book.js, used by listening and make-audio).
+- Since 5 books, home shows category shelves, not a list: `tools/smoke-test.js` now clicks any `#/book/` link.
 
 ## Known issues / decisions
 
